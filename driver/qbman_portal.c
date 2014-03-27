@@ -1,5 +1,5 @@
 #include <drivers/fsl_qbman_portal.h>
-#include <stdio.h>
+#include "compat.h"
 
 void print_junk(void)
 {

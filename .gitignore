@@ -1,0 +1,16 @@
+*~
+*.d
+*.i
+*.s
+*.o
+*.a
+/bin_*
+.Makefile.touch
+.yocto
+cscope*
+*.patch
+*~
+\#*\#
+.\#*
+*.swp
+*.orig

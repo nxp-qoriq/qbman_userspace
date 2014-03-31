@@ -12,12 +12,6 @@
  *	 names of its contributors may be used to endorse or promote products
  *	 derived from this software without specific prior written permission.
  *
- *
- * ALTERNATIVELY, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") as published by the Free Software
- * Foundation, either version 2 of that License or (at your option) any
- * later version.
- *
  * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -35,10 +29,6 @@
 
 #include <sched.h>
 
-/* All <usdpaa/xxx.h> headers include this header, directly or otherwise. This
- * should provide the minimal set of system includes and base-definitions
- * required by these headers, such that C code can include USDPAA headers
- * without pre-requisites. */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -49,6 +39,20 @@
 #include <string.h>
 #include <pthread.h>
 #include <net/ethernet.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <malloc.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <limits.h>
+#include <assert.h>
+#include <dirent.h>
+#include <inttypes.h>
+#include <error.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
@@ -85,10 +89,6 @@ typedef uint64_t	u64;
 typedef uint64_t	dma_addr_t;
 typedef cpu_set_t	cpumask_t;
 #define spinlock_t	pthread_mutex_t
-struct rb_node {
-	struct rb_node *prev, *next;
-};
-
 typedef	u32		compat_uptr_t;
 static inline void __user *compat_ptr(compat_uptr_t uptr)
 {
@@ -99,100 +99,6 @@ static inline compat_uptr_t ptr_to_compat(void __user *uptr)
 {
 	return (u32)(unsigned long)uptr;
 }
-
-/* SMP stuff */
-static inline int cpumask_test_cpu(int cpu, cpumask_t *mask)
-{
-	return CPU_ISSET(cpu, mask);
-}
-static inline void cpumask_set_cpu(int cpu, cpumask_t *mask)
-{
-	CPU_SET(cpu, mask);
-}
-static inline void cpumask_clear_cpu(int cpu, cpumask_t *mask)
-{
-	CPU_CLR(cpu, mask);
-}
-#define DEFINE_PER_CPU(t, x)	__thread t per_cpu__##x
-#define per_cpu(x, c)		per_cpu__##x
-#define get_cpu_var(x)		per_cpu__##x
-#define __get_cpu_var(x)	per_cpu__##x
-#define put_cpu_var(x)		do {; } while (0)
-#define __PERCPU		__thread
-/* to be used as an upper-limit only */
-#define NR_CPUS			64
-
-/* Atomic stuff */
-typedef struct {
-	volatile long v;
-} atomic_t;
-/* NB: __atomic_*() functions copied and twiddled from lwe_atomic.h */
-static inline int atomic_read(const atomic_t *v)
-{
-	return v->v;
-}
-static inline void atomic_set(atomic_t *v, int i)
-{
-	v->v = i;
-}
-static inline long
-__atomic_add(long *ptr, long val)
-{
-	long ret;
-
-	/* FIXME 64-bit */
-	asm volatile("1: lwarx %0, %y1;"
-		     "add %0, %0, %2;"
-		     "stwcx. %0, %y1;"
-		     "bne 1b;" :
-		     "=&r" (ret), "+Z" (*ptr) :
-		     "r" (val) :
-		     "memory", "cc");
-
-	return ret;
-}
-static inline void atomic_inc(atomic_t *v)
-{
-	__atomic_add((long *)&v->v, 1);
-}
-static inline int atomic_dec_and_test(atomic_t *v)
-{
-	return __atomic_add((long *)&v->v, -1) == 0;
-}
-static inline void atomic_dec(atomic_t *v)
-{
-	__atomic_add((long *)&v->v, -1);
-}
-
-/* new variants not present in LWE */
-static inline int atomic_inc_and_test(atomic_t *v)
-{
-	return __atomic_add((long *)&v->v, 1) == 0;
-}
-
-static inline int atomic_inc_return(atomic_t *v)
-{
-	return	__atomic_add((long *)&v->v, 1);
-}
-
-/* Waitqueue stuff */
-typedef struct { }		wait_queue_head_t;
-#define DECLARE_WAIT_QUEUE_HEAD(x) int dummy_##x __always_unused
-#define might_sleep()		do {; } while (0)
-#define init_waitqueue_head(x)	do {; } while (0)
-#define wake_up(x)		do {; } while (0)
-#define wait_event(x, c) \
-do { \
-	while (!(c)) { \
-		bman_poll(); \
-		qman_poll(); \
-	} \
-} while (0)
-#define wait_event_interruptible(x, c) \
-({ \
-	wait_event(x, c); \
-	0; \
-})
 
 /* I/O operations */
 static inline u32 in_be32(volatile void *__p)
@@ -205,66 +111,6 @@ static inline void out_be32(volatile void *__p, u32 val)
 	volatile u32 *p = __p;
 	*p = val;
 }
-#define hwsync __sync_synchronize
-#define dcbt_ro(p) __builtin_prefetch(p, 0)
-#define dcbt_rw(p) __builtin_prefetch(p, 1)
-#define lwsync() \
-	do { \
-		asm volatile ("lwsync" : : : "memory"); \
-	} while (0)
-#define dcbf(p) \
-	do { \
-		asm volatile ("dcbf 0,%0" : : "r" (p)); \
-	} while (0)
-#define dcbi(p) dcbf(p)
-#ifdef CONFIG_PPC_E500MC
-#define dcbzl(p) \
-	do { \
-		__asm__ __volatile__ ("dcbzl 0,%0" : : "r" (p)); \
-	} while (0)
-#define dcbz_64(p) \
-	do { \
-		dcbzl(p); \
-	} while (0)
-#define dcbf_64(p) \
-	do { \
-		dcbf(p); \
-	} while (0)
-/* Commonly used combo */
-#define dcbit_ro(p) \
-	do { \
-		dcbi(p); \
-		dcbt_ro(p); \
-	} while (0)
-#else
-#define dcbz(p) \
-	do { \
-		__asm__ __volatile__ ("dcbz 0,%0" : : "r" (p)); \
-	} while (0)
-#define dcbz_64(p) \
-	do { \
-		dcbz((u32)p + 32);	\
-		dcbz(p);	\
-	} while (0)
-#define dcbf_64(p) \
-	do { \
-		dcbf((u32)p + 32); \
-		dcbf(p); \
-	} while (0)
-/* Commonly used combo */
-#define dcbit_ro(p) \
-	do { \
-		dcbi(p); \
-		dcbi((u32)p + 32); \
-		dcbt_ro(p); \
-		dcbt_ro((u32)p + 32); \
-	} while (0)
-#endif /* CONFIG_PPC_E500MC */
-#define barrier() \
-	do { \
-		asm volatile ("" : : : "memory"); \
-	} while(0)
-#define cpu_relax barrier
 
 /* Debugging */
 #define prflush(fmt, args...) \
@@ -382,74 +228,8 @@ do { \
 
 /* Other miscellaneous interfaces our APIs depend on; */
 
-/* Qman/Bman API inlines and macros; */
 #define lower_32_bits(x) ((u32)(x))
 #define upper_32_bits(x) ((u32)(((x) >> 16) >> 16))
-
-/* PPAC inlines require cpu_spin(); */
-/* Alternate Time Base */
-#define SPR_ATBL	526
-#define SPR_ATBU	527
-#define SPR_TBL		268
-#define SPR_TBU		269
-#define mfspr(reg) \
-({ \
-	register_t ret; \
-	asm volatile("mfspr %0, %1" : "=r" (ret) : "i" (reg) : "memory"); \
-	ret; \
-})
-static inline uint64_t mfatb(void)
-{
-	uint32_t hi, lo, chk;
-	do {
-		hi = mfspr(SPR_ATBU);
-		lo = mfspr(SPR_ATBL);
-		chk = mfspr(SPR_ATBU);
-	} while (unlikely(hi != chk));
-	return (uint64_t) hi << 32 | (uint64_t) lo;
-}
-
-static inline uint64_t mftb(void)
-{
-	uint32_t hi, lo, chk;
-	do {
-		hi = mfspr(SPR_TBU);
-		lo = mfspr(SPR_TBL);
-		chk = mfspr(SPR_TBU);
-	} while (unlikely(hi != chk));
-	return (uint64_t) hi << 32 | (uint64_t) lo;
-}
-
-/* Spin for a few cycles without bothering the bus */
-static inline void cpu_spin(int cycles)
-{
-	uint64_t now = mfatb();
-	while (mfatb() < (now + cycles))
-		;
-}
-
-/* <usdpaa/compat.h> already includes system headers and definitions required
- * via the APIs, so these includes and definitions should only supply whatever
- * additions are required to compile the implementations. */
-#include <stdio.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <malloc.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <limits.h>
-#include <assert.h>
-#include <dirent.h>
-#include <inttypes.h>
-#include <error.h>
-
-/* NB: these compatibility shims are in this exported header because they're
- * required by interfaces shared with linux drivers (ie. for "single-source"
- * purposes).
- */
 
 /* Compiler/type stuff */
 typedef unsigned int	gfp_t;
@@ -478,95 +258,13 @@ do { \
 	*(volatile unsigned int *)(p) = (v); \
 } while (0)
 
-#if defined(__powerpc64__)
-#define CONFIG_PPC64
-#endif
-
 /* printk() stuff */
 #define printk(fmt, args...)	do_not_use_printk
 #define nada(fmt, args...)	do { ; } while(0)
 
-/* Debug stuff */
-#ifdef CONFIG_FSL_BMAN_CHECKING
-#define BM_ASSERT(x) \
-	do { \
-		if (!(x)) { \
-			pr_crit("ASSERT: (%s:%d) %s\n", __FILE__, __LINE__, \
-				__stringify_1(x)); \
-			exit(EXIT_FAILURE); \
-		} \
-	} while(0)
-#else
-#define BM_ASSERT(x)		do { ; } while(0)
-#endif
-#ifdef CONFIG_FSL_QMAN_CHECKING
-#define QM_ASSERT(x) \
-	do { \
-		if (!(x)) { \
-			pr_crit("ASSERT: (%s:%d) %s\n", __FILE__, __LINE__, \
-				__stringify_1(x)); \
-			exit(EXIT_FAILURE); \
-		} \
-	} while(0)
-#else
-#define QM_ASSERT(x)		do { ; } while(0)
-#endif
-static inline void __hexdump(unsigned long start, unsigned long end,
-			unsigned long p, size_t sz, const unsigned char *c)
-{
-	while (start < end) {
-		unsigned int pos = 0;
-		char buf[64];
-		int nl = 0;
-		pos += sprintf(buf + pos, "%08lx: ", start);
-		do {
-			if ((start < p) || (start >= (p + sz)))
-				pos += sprintf(buf + pos, "..");
-			else
-				pos += sprintf(buf + pos, "%02x", *(c++));
-			if (!(++start & 15)) {
-				buf[pos++] = '\n';
-				nl = 1;
-			} else {
-				nl = 0;
-				if(!(start & 1))
-					buf[pos++] = ' ';
-				if(!(start & 3))
-					buf[pos++] = ' ';
-			}
-		} while (start & 15);
-		if (!nl)
-			buf[pos++] = '\n';
-		buf[pos] = '\0';
-		pr_info("%s", buf);
-	}
-}
-static inline void hexdump(const void *ptr, size_t sz)
-{
-	unsigned long p = (unsigned long)ptr;
-	unsigned long start = p & ~(unsigned long)15;
-	unsigned long end = (p + sz + 15) & ~(unsigned long)15;
-	const unsigned char *c = ptr;
-	__hexdump(start, end, p, sz, c);
-}
-
-
 /* Interrupt stuff */
 typedef uint32_t	irqreturn_t;
 #define IRQ_HANDLED	0
-#ifdef CONFIG_FSL_DPA_IRQ_SAFETY
-#error "Won't work"
-#endif
-#define local_irq_disable()	do { ; } while(0)
-#define local_irq_enable()	do { ; } while(0)
-#define local_irq_save(v)	do { ; } while(0)
-#define local_irq_restore(v)	do { ; } while(0)
-#define request_irq(irq, isr, args, devname, portal) \
-	qbman_request_irq(irq, isr, args, devname, portal)
-#define free_irq(irq, portal) \
-	qbman_free_irq(irq, portal)
-#define irq_can_set_affinity(x)	0
-#define irq_set_affinity(x,y)	0
 
 /* memcpy() stuff - when you know alignments in advance */
 #ifdef CONFIG_TRY_BETTER_MEMCPY
@@ -702,6 +400,10 @@ static inline unsigned long get_zeroed_page(gfp_t __foo __always_unused)
 	memset(p, 0, 4096);
 	return (unsigned long)p;
 }
+static inline void free_page(unsigned long p)
+{
+	free((void *)p);
+}
 struct kmem_cache {
 	size_t sz;
 	size_t align;
@@ -802,114 +504,6 @@ static inline int find_first_zero_bit(unsigned long *bits, int limit)
 	while (test_bit(idx, bits) && (++idx < limit))
 		;
 	return idx;
-}
-
-/************/
-/* RB-trees */
-/************/
-
-/* Linux has a good RB-tree implementation, that we can't use (GPL). It also has
- * a flat/hooked-in interface that virtually requires license-contamination in
- * order to write a caller-compatible implementation. Instead, I've created an
- * RB-tree encapsulation on top of linux's primitives (it does some of the work
- * the client logic would normally do), and this gives us something we can
- * reimplement on LWE. Unfortunately there's no good+free RB-tree
- * implementations out there that are license-compatible and "flat" (ie. no
- * dynamic allocation). I did find a malloc-based one that I could convert, but
- * that will be a task for later on. For now, LWE's RB-tree is implemented using
- * an ordered linked-list.
- *
- * Note, the only linux-esque type is "struct rb_node", because it's used
- * statically in the exported header, so it can't be opaque. Our version doesn't
- * include a "rb_parent_color" field because we're doing linked-list instead of
- * a true rb-tree.
- */
-
-#if 0 /* declared in <usdpaa/compat.h>, required by <usdpaa/fsl_qman.h> */
-struct rb_node {
-	struct rb_node *prev, *next;
-};
-#endif
-
-struct dpa_rbtree {
-	struct rb_node *head, *tail;
-};
-
-#define DPA_RBTREE { NULL, NULL }
-static inline void dpa_rbtree_init(struct dpa_rbtree *tree)
-{
-	tree->head = tree->tail = NULL;
-}
-
-#define QMAN_NODE2OBJ(ptr, type, node_field) \
-	(type *)((char *)ptr - offsetof(type, node_field))
-
-#define IMPLEMENT_DPA_RBTREE(name, type, node_field, val_field) \
-static inline int name##_push(struct dpa_rbtree *tree, type *obj) \
-{ \
-	struct rb_node *node = tree->head; \
-	if (!node) { \
-		tree->head = tree->tail = &obj->node_field; \
-		obj->node_field.prev = obj->node_field.next = NULL; \
-		return 0; \
-	} \
-	while (node) { \
-		type *item = QMAN_NODE2OBJ(node, type, node_field); \
-		if (obj->val_field == item->val_field) \
-			return -EBUSY; \
-		if (obj->val_field < item->val_field) { \
-			if (tree->head == node) \
-				tree->head = &obj->node_field; \
-			else \
-				node->prev->next = &obj->node_field; \
-			obj->node_field.prev = node->prev; \
-			obj->node_field.next = node; \
-			node->prev = &obj->node_field; \
-			return 0; \
-		} \
-		node = node->next; \
-	} \
-	obj->node_field.prev = tree->tail; \
-	obj->node_field.next = NULL; \
-	tree->tail->next = &obj->node_field; \
-	tree->tail = &obj->node_field; \
-	return 0; \
-} \
-static inline void name##_del(struct dpa_rbtree *tree, type *obj) \
-{ \
-	if (tree->head == &obj->node_field) { \
-		if (tree->tail == &obj->node_field) \
-			/* Only item in the list */ \
-			tree->head = tree->tail = NULL; \
-		else { \
-			/* Is the head, next != NULL */ \
-			tree->head = tree->head->next; \
-			tree->head->prev = NULL; \
-		} \
-	} else { \
-		if (tree->tail == &obj->node_field) { \
-			/* Is the tail, prev != NULL */ \
-			tree->tail = tree->tail->prev; \
-			tree->tail->next = NULL; \
-		} else { \
-			/* Is neither the head nor the tail */ \
-			obj->node_field.prev->next = obj->node_field.next; \
-			obj->node_field.next->prev = obj->node_field.prev; \
-		} \
-	} \
-} \
-static inline type *name##_find(struct dpa_rbtree *tree, u32 val) \
-{ \
-	struct rb_node *node = tree->head; \
-	while (node) { \
-		type *item = QMAN_NODE2OBJ(node, type, node_field); \
-		if (val == item->val_field) \
-			return item; \
-		if (val < item->val_field) \
-			return NULL; \
-		node = node->next; \
-	} \
-	return NULL; \
 }
 
 static inline u64 div64_u64(u64 n, u64 d)

@@ -45,7 +45,7 @@ ifneq (distclean,$(MAKECMDGOALS))
     $(ARCH)_SPEC_LDFLAGS :=
     LIBDIR               ?= lib64
   else
-   ifeq (arm64,$(ARCH))
+   ifeq (aarch64,$(ARCH))
      CROSS_COMPILE		?= aarch64-linux-gnu-
      $(ARCH)_SPEC_DEFINE	:=
      $(ARCH)_SPEC_INC_PATH	:=

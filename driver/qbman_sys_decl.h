@@ -22,8 +22,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <drivers/fsl_qbman_base.h>
 #include <compat.h>
+#include <drivers/fsl_qbman_base.h>
 
 #define upper32(a) upper_32_bits(a)
 #define lower32(a) lower_32_bits(a)

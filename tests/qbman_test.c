@@ -23,9 +23,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <compat.h>
 #include <drivers/fsl_qbman_base.h>
 #include <drivers/fsl_qbman_portal.h>
-#include <compat.h>
 #include <sys/ioctl.h>
 
 #define QBMAN_TEST_MAGIC 'q'

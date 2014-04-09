@@ -25,8 +25,6 @@
 #ifndef _FSL_QBMAN_BASE_H
 #define _FSL_QBMAN_BASE_H
 
-#include <compat.h>
-
 #define QBMAN_MAX_DCP	12
 #define QBMAN_MAX_CEETM_INS 4
 

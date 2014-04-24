@@ -25,6 +25,23 @@
 #include <compat.h>
 #include <drivers/fsl_qbman_base.h>
 
+/* Sanity check */
+#if (__BYTE_ORDER__ != __ORDER_BIG_ENDIAN__) && \
+	(__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#error "Unknown endianness!"
+#endif
+
+/* The platform-independent code shouldn't need endianness, except for
+ * weird/fast-path cases like qbman_dq_entry_has_token(), which needs to
+ * perform a passive and endianness-specific test on a read-only data structure
+ * very quickly. It's an exception, and this symbol is used for that case. */
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define DQRR_TOK_OFFSET 0
+#else
+#define DQRR_TOK_OFFSET 24
+#endif
+
+/* Similarly-named functions */
 #define upper32(a) upper_32_bits(a)
 #define lower32(a) lower_32_bits(a)
 

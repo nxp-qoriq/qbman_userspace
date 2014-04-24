@@ -72,7 +72,7 @@ static inline void u64_to_le32_copy(void *d, const uint64_t *s,
 		 * until recently so this works entirely with 32-bit variables.
 		 * When 64-bit types become usable again, investigate better
 		 * ways of doing this. */
-#if defined(__BIG_ENDIAN)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 		*(dd++) = ss[1];
 		*(dd++) = ss[0];
 		ss += 2;
@@ -88,7 +88,7 @@ static inline void u64_from_le32_copy(uint64_t *d, const void *s,
 	const uint32_t *ss = s;
 	uint32_t *dd = (uint32_t *)d;
 	while (cnt--) {
-#if defined(__BIG_ENDIAN)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 		dd[1] = *(ss++);
 		dd[0] = *(ss++);
 		dd += 2;
@@ -100,7 +100,7 @@ static inline void u64_from_le32_copy(uint64_t *d, const void *s,
 }
 
 /* Convert a host-native 32bit value into little endian */
-#if defined(__BIG_ENDIAN)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 static inline uint32_t make_le32(uint32_t val)
 {
 	return ((val & 0xff) << 24) | ((val & 0xff00) << 8) |
@@ -109,6 +109,13 @@ static inline uint32_t make_le32(uint32_t val)
 #else
 #define make_le32(val) (val)
 #endif
+static inline void make_le32_n(uint32_t *val, unsigned int num)
+{
+	while (num--) {
+		*val = make_le32(*val);
+		val++;
+	}
+}
 
 	/******************/
 	/* Portal access  */

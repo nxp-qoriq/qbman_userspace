@@ -588,16 +588,13 @@ int qbman_dq_entry_has_newtoken(struct qbman_swp *s,
 				uint8_t newtoken)
 {
 	/* To avoid converting the little-endian DQ entry to host-endian prior
-	 * to us knowing whether there is a valid entry or not (and run the risk
-	 * of corrupting the incoming hardware LE write), we detect in hardware
-	 * endianness rather than host. This means we need a different "code"
-	 * depending on whether we are BE or LE in software. */
-#if defined(__BIG_ENDIAN)
-	int i;
-	static struct qb_attr_code code_dqrr_tok_detect = QB_CODE(0, 0, 8);
-#else
-	static struct qb_attr_code code_dqrr_tok_detect = QB_CODE(0, 24, 8);
-#endif
+	 * to us knowing whether there is a valid entry or not (and run the
+	 * risk of corrupting the incoming hardware LE write), we detect in
+	 * hardware endianness rather than host. This means we need a different
+	 * "code" depending on whether we are BE or LE in software, which is
+	 * where DQRR_TOK_OFFSET comes in... */
+	static struct qb_attr_code code_dqrr_tok_detect =
+					QB_CODE(0, DQRR_TOK_OFFSET, 8);
 	/* The user trying to poll for a result treats "dq" as const. It is
 	 * however the same address that was provided to us non-const in the
 	 * first place, for directing hardware DMA to. So we can cast away the
@@ -612,10 +609,7 @@ int qbman_dq_entry_has_newtoken(struct qbman_swp *s,
 	/* Only now do we convert from hardware to host endianness. Also, as we
 	 * are returning success, the user has promised not to call us again, so
 	 * there's no risk of us converting the endianness twice... */
-#if defined(__BIG_ENDIAN)
-	for (i = 0; i < 16; i++)
-		p[i] = make_le32(p[i]);
-#endif
+	make_le32_n(p, 16);
 
 	/* VDQCR "no longer busy" hook - not quite the same as DQRR, because the
 	 * fact "VDQCR" shows busy doesn't mean that we hold the result that

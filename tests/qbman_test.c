@@ -122,7 +122,7 @@ int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
 
 #define NUM_EQ_FRAME 10
 #define NUM_DQ_FRAME 10
-#define NUM_DQ_IN_DQRR 10
+#define NUM_DQ_IN_DQRR 5
 #define NUM_DQ_IN_MEM   (NUM_DQ_FRAME - NUM_DQ_IN_DQRR)
 
 static struct qbman_swp *swp;
@@ -272,25 +272,25 @@ static void do_pull_dequeue(struct qbman_swp *p)
 	pr_info("*****QBMan_test: Dequeue %d frames from FQ %d,"
 					" write dq entry in memory\n",
 					NUM_DQ_IN_MEM, QBMAN_TEST_FQID);
-	dq_storage = ((struct qbman_dq_entry *)mem_map.ptr[32]);
+	dq_storage = (struct qbman_dq_entry *)mem_map.ptr;
 	for (i = 0; i < NUM_DQ_IN_MEM; i++) {
-		qbman_dq_entry_set_oldtoken(&dq_storage[i], 1, i);
-		dq_storage_phys = (dma_addr_t)(mem_map.phys_addr + 2048 +
-					 i * sizeof(dq_storage_phys));
+		qbman_dq_entry_set_oldtoken(dq_storage, 1, i);
+		dq_storage_phys = (dma_addr_t)(mem_map.phys_addr +
+				 i * sizeof(struct qbman_dq_entry));
 		qbman_pull_desc_clear(&pulldesc);
-		qbman_pull_desc_set_storage(&pulldesc, &dq_storage[i],
+		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 						dq_storage_phys, 0);
 		qbman_pull_desc_set_numframes(&pulldesc, 1);
 		qbman_pull_desc_set_token(&pulldesc, 0xab + i);
 		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
 		ret = qbman_swp_pull(p, &pulldesc);
 		BUG_ON(ret);
-		ret = qbman_dq_entry_has_newtoken(p, &dq_storage[i],
+		ret = qbman_dq_entry_has_newtoken(p, dq_storage,
 							0xab + i);
 		if (ret) {
 			for (j = 0; j < 8; j++)
 				fd_dq[i + NUM_DQ_IN_DQRR].words[j] =
-				dq_storage[i].dont_manipulate_directly[j + 8];
+				dq_storage->dont_manipulate_directly[j + 8];
 			j = i + NUM_DQ_IN_DQRR;
 			if (fd_cmp(&fd_eq[j], &fd_dq[j]))
 				pr_info("The dequeue FD %d in memory"
@@ -298,6 +298,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		} else {
 			pr_info("Dequeue with dq entry in memory fails\n");
 		}
+		dq_storage++;
 	}
 }
 

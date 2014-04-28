@@ -51,13 +51,21 @@ static int filep = -1;
 static struct qbman_test_swp_ioctl portal_map;
 static struct qbman_test_dma_ioctl mem_map;
 
+static int check_fd(void)
+{
+	if (filep < 0) {
+		filep = open("/dev/qbman-test", O_RDWR);
+		if (filep < 0)
+			return -ENODEV;
+	}
+	return 0;
+}
+
 int qbman_swp_mmap(struct qbman_test_swp_ioctl *params)
 {
-	int ret;
-	filep = open("/dev/qbman-test", O_RDWR);
-	if (filep == -1)
-		return -ENODEV;
-		
+	int ret = check_fd();
+	if (ret)
+		return ret;
         ret = ioctl(filep, QBMAN_TEST_SWP_MAP, params);
         if (ret) {
                 perror("ioctl(QBMAN_TEST_SWP_MAP)");
@@ -68,11 +76,9 @@ int qbman_swp_mmap(struct qbman_test_swp_ioctl *params)
 
 int qbman_swp_munmap(struct qbman_test_swp_ioctl *params)
 {
-	int ret;
-	filep = open("/dev/qbman-test", O_RDWR);
-	if (filep == -1)
-		return -ENODEV;
-		
+	int ret = check_fd();
+	if (ret)
+		return ret;
         ret = ioctl(filep, QBMAN_TEST_SWP_UNMAP, params);
         if (ret) {
                 perror("ioctl(QBMAN_TEST_SWP_UNMAP)");
@@ -83,11 +89,9 @@ int qbman_swp_munmap(struct qbman_test_swp_ioctl *params)
 
 int qbman_dma_mmap(struct qbman_test_dma_ioctl *params)
 {
-	int ret;
-	filep = open("/dev/qbman-test", O_RDWR);
-	if (filep == -1)
-		return -ENODEV;
-		
+	int ret = check_fd();
+	if (ret)
+		return ret;
         ret = ioctl(filep, QBMAN_TEST_DMA_MAP, params);
         if (ret) {
                 perror("ioctl(QBMAN_TEST_DMA_UNMAP)");
@@ -98,11 +102,9 @@ int qbman_dma_mmap(struct qbman_test_dma_ioctl *params)
 
 int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
 {
-	int ret;
-	filep = open("/dev/qbman-test", O_RDWR);
-	if (filep == -1)
-		return -ENODEV;
-		
+	int ret = check_fd();
+	if (ret)
+		return ret;
         ret = ioctl(filep, QBMAN_TEST_DMA_UNMAP, params);
         if (ret) {
                 perror("ioctl(QBMAN_TEST_DMA_UNMAP)");
@@ -419,6 +421,7 @@ int qbman_test(void)
 	/******************/
 	ceetm_test(swp);
 
+	qbman_swp_munmap(&portal_map);
 	qbman_dma_munmap(&mem_map);
 	qbman_swp_finish(swp);
 	pr_info("*****QBMan_test: User space test Passed\n");

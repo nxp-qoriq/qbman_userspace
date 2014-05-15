@@ -108,17 +108,13 @@ void *qbman_swp_mc_result(struct qbman_swp *p);
 static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
 					  uint32_t cmd_verb)
 {
+	int loopvar;
 	qbman_swp_mc_submit(swp, cmd, cmd_verb);
-#if 0 /* sim bug */
-	DBG_POLL_START();
+	DBG_POLL_START(loopvar);
 	do {
-		DBG_POLL_CHECK();
+		DBG_POLL_CHECK(loopvar);
 		cmd = qbman_swp_mc_result(swp);
 	} while (!cmd);
-	DBG_POLL_END();
-#else
-	cmd = qbman_swp_mc_result(swp);
-#endif
 	return cmd;
 }
 

@@ -55,10 +55,9 @@
  * TODO: we should probably remove this once we're done sanitising the
  * simulator...
  */
-#define DBG_POLL_START() ({ int dbg_poll_var = 10)
-#define DBG_POLL_CHECK() (if (!(dbg_poll_var--)) goto dbg_poll_out)
-#define DBG_POLL_END() (dbg_poll_out : BUG_ON(dbg_poll_var <= 0); } \
-				do {; } while (0))
+#define DBG_POLL_START(loopvar) (loopvar = 10)
+#define DBG_POLL_CHECK(loopvar) \
+	do {if (!(loopvar--)) BUG_ON(NULL == "DBG_POLL_CHECK"); } while (0)
 
 /* For CCSR or portal-CINH registers that contain fields at arbitrary offsets
  * and widths, these macro-generated encode/decode/isolate/remove inlines can

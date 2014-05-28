@@ -34,7 +34,6 @@ ifneq (distclean,$(MAKECMDGOALS))
    $(ARCH)_SPEC_LIB_PATH:=
    $(ARCH)_SPEC_CFLAGS	:= -mcpu=e500mc
    $(ARCH)_SPEC_LDFLAGS	:=
-   LIBDIR               ?= lib
  else
   ifeq (powerpc64,$(ARCH))
     CROSS_COMPILE	 ?= powerpc-linux-gnu-
@@ -43,7 +42,6 @@ ifneq (distclean,$(MAKECMDGOALS))
     $(ARCH)_SPEC_LIB_PATH:=
     $(ARCH)_SPEC_CFLAGS	 := -mcpu=e500mc64 -m64
     $(ARCH)_SPEC_LDFLAGS :=
-    LIBDIR               ?= lib64
   else
    ifeq (aarch64,$(ARCH))
      CROSS_COMPILE		?= aarch64-linux-gnu-
@@ -52,7 +50,6 @@ ifneq (distclean,$(MAKECMDGOALS))
      $(ARCH)_SPEC_LIB_PATH	:=
      $(ARCH)_SPEC_CFLAGS	:=
      $(ARCH)_SPEC_LDFLAGS	:=
-     LIBDIR			?= lib64
    else
      $(error "ARCH not defined.")
    endif
@@ -70,14 +67,33 @@ AR		:= $(CROSS_COMPILE)ar
 TOP_LEVEL	:= $(shell pwd)
 DESTDIR		?= $(TOP_LEVEL)/test_install
 PREFIX		?= usr
+LIBDIR		?= lib
 INSTALL_BIN	?= $(PREFIX)/bin
 INSTALL_SBIN	?= $(PREFIX)/sbin
 INSTALL_LIB	?= $(PREFIX)/$(LIBDIR)
 INSTALL_OTHER	?= $(PREFIX)/etc
-OBJ_DIR		:= objs_$(ARCH)
-BIN_DIR		:= $(TOP_LEVEL)/bin_$(ARCH)
-LIB_DIR		:= $(TOP_LEVEL)/lib_$(ARCH)
-CFLAGS		:= -pthread -O2 -Wall
+ifeq (shared,$(LINKTYPE))
+   BINSUFFIX	:= .fpic
+   LIBSUFFIX	:= .so
+   CFLAGS	:= -fPIC
+   OBJ_DIR	:= objs_$(ARCH)_shared
+   BIN_DIR	:= $(TOP_LEVEL)/bin_$(ARCH)_shared
+   LIB_DIR	:= $(TOP_LEVEL)/lib_$(ARCH)_shared
+   # Build shared libs with "gcc -shared -o <libname> <objs>"
+   ARFLAGS	:= -shared -o
+   $(info Building for shared libraries and linking)
+else
+   BINSUFFIX	:=
+   LIBSUFFIX	:= .a
+   CFLAGS	:=
+   OBJ_DIR	:= objs_$(ARCH)_static
+   BIN_DIR	:= $(TOP_LEVEL)/bin_$(ARCH)_static
+   LIB_DIR	:= $(TOP_LEVEL)/lib_$(ARCH)_static
+   # Build static libs with "ar rcs <libname> <objs>"
+   ARFLAGS	:= rcs
+   $(info Building for static libraries and linking)
+endif
+CFLAGS		+= -pthread -O2 -Wall
 CFLAGS		+= -Wshadow -Wstrict-prototypes -Wwrite-strings -Wdeclaration-after-statement
 CFLAGS		+= -I$(TOP_LEVEL)/include $(addprefix -I,$($(ARCH)_SPEC_INC_PATH))
 CFLAGS		+= -DPACKAGE_VERSION=\"$(shell git describe --always --dirty 2>/dev/null || echo n/a)\" -D_GNU_SOURCE
@@ -86,7 +102,6 @@ CFLAGS		+= $($(ARCH)_SPEC_CFLAGS) $(EXTRA_CFLAGS)
 LDFLAGS		:= -pthread -lm
 LDFLAGS		+= $(addprefix -L,$(LIB_DIR)) $(addprefix -L,$($(ARCH)_SPEC_LIB_PATH))
 LDFLAGS		+= $($(ARCH)_SPEC_LDFLAGS) $(EXTRA_LDFLAGS)
-ARFLAGS		:= rcs
 INSTALL_FLAGS	?= -D
 INSTALL_BIN_FLAGS ?= --mode=755
 INSTALL_SBIN_FLAGS ?= --mode=700
@@ -180,26 +195,30 @@ $($(1)_pref)$(3).o:$($(1)_dir)/$(2) $(4)/$(MAKE_TOUCHFILE)
 endef
 
 define process_bin
-$(eval $(call pre_process_target,$(1),$(2),$(3),$(1),$(INSTALL_BIN),$(BIN_DIR),$(INSTALL_BIN_FLAGS)))
+$(eval $(call pre_process_target,$(1),$(2),$(3),$(1)$(BINSUFFIX),$(INSTALL_BIN),$(BIN_DIR),$(INSTALL_BIN_FLAGS)))
 $(eval $(1)_type := bin)
 $(eval BINS += $(1))
 $(foreach x,$(filter %.c,$($(1)_SOURCES)),$(eval $(call process_obj,$(1),$(x),$(basename $(x)),$(2))))
 $(eval CLEANOBJS += $(BIN_DIR)/$(1))
-$(BIN_DIR)/$(1):$($(1)_objs) $(addprefix $(LIB_DIR)/lib,$(addsuffix .a,$($(1)_LDADD))) | $(BIN_DIR)
-	$$(Q)echo " [LD] $$(notdir $$@)";
+$(BIN_DIR)/$(1)$(BINSUFFIX):$($(1)_objs) $(addprefix $(LIB_DIR)/lib,$(addsuffix $(LIBSUFFIX),$($(1)_LDADD))) | $(BIN_DIR)
+	$$(Q)echo " [BIN] $$(notdir $$@)";
 	$$(Q)$(CC) $($(1)_objs) $(LDFLAGS) $($(1)_LDFLAGS) -Wl,--gc-sections $(addprefix -l,$($(1)_priv_LDADD)) $(addprefix -l,$($(1)_LDADD)) $(addprefix -l,$($(1)_sys_LDADD)) -Wl,-Map,$$@.map -o $$@
 endef
 
 define process_lib
-$(eval $(call pre_process_target,$(1),$(2),$(3),lib$(1).a,$(INSTALL_LIB),$(LIB_DIR),$(INSTALL_LIB_FLAGS)))
+$(eval $(call pre_process_target,$(1),$(2),$(3),lib$(1)$(LIBSUFFIX),$(INSTALL_LIB),$(LIB_DIR),$(INSTALL_LIB_FLAGS)))
 $(eval $(1)_type := lib)
 $(eval LIBS += $(1))
 $(foreach x,$(filter %.c,$($(1)_SOURCES)),$(eval $(call process_obj,$(1),$(x),$(basename $(x)),$(2))))
-$(eval CLEANOBJS += $(LIB_DIR)/lib$(1).a)
-$(LIB_DIR)/lib$(1).a:$($(1)_objs) | $(LIB_DIR)
-	$(Q)echo " [AR] $$(notdir $$@)"
+$(eval CLEANOBJS += $(LIB_DIR)/lib$(1)$(LIBSUFFIX))
+$(LIB_DIR)/lib$(1)$(LIBSUFFIX):$($(1)_objs) | $(LIB_DIR)
+	$(Q)echo " [LIB] $$(notdir $$@)"
 	$(Q)$(RM) $$@
+ifeq (shared,$(LINKTYPE))
+	$(Q)$(CC) $(ARFLAGS) $$@ $($(1)_objs)
+else
 	$(Q)$(AR) $(ARFLAGS) $$@ $($(1)_objs)
+endif
 endef
 
 define process_dir
@@ -232,7 +251,7 @@ $(BIN_DIR) $(LIB_DIR):
 
 # ----=["All targets" targets ]=----
 
-build:$(foreach lib,$(LIBS),$(LIB_DIR)/lib$(lib).a) $(foreach bin,$(BINS),$(BIN_DIR)/$(bin))
+build:$(foreach lib,$(LIBS),$(LIB_DIR)/lib$(lib)$(LIBSUFFIX)) $(foreach bin,$(BINS),$(BIN_DIR)/$(bin)$(BINSUFFIX))
 install uninstall: %: $(addprefix do_%_,$(TO_INSTALL))
 
 debug:

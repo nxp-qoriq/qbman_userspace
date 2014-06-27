@@ -27,6 +27,7 @@
 
 /* QBMan portal management command codes */
 #define QBMAN_MC_ACQUIRE       0x30
+#define QBMAN_WQCHAN_CONFIGURE 0x46
 
 /* CINH register offsets */
 #define QBMAN_CINH_SWP_EQAR    0x8c0
@@ -967,3 +968,80 @@ int qbman_swp_fq_xoff(struct qbman_swp *s, uint32_t fqid)
 	return qbman_swp_alt_fq_state(s, fqid, QBMAN_FQ_XOFF);
 }
 EXPORT_SYMBOL(qbman_swp_fq_xoff);
+
+/**********************/
+/* Channel management */
+/**********************/
+
+static struct qb_attr_code code_cdan_cid = QB_CODE(0, 16, 12);
+static struct qb_attr_code code_cdan_we = QB_CODE(1, 0, 8);
+static struct qb_attr_code code_cdan_en = QB_CODE(1, 8, 1);
+static struct qb_attr_code code_cdan_ctx_lo = QB_CODE(2, 0, 32);
+static struct qb_attr_code code_cdan_ctx_hi = QB_CODE(3, 0, 32);
+
+/* Hide "ICD" for now as we don't use it, don't set it, and don't test it, so it
+ * would be irresponsible to expose it. */
+#define CODE_CDAN_WE_EN    0x1
+#define CODE_CDAN_WE_CTX   0x4
+
+static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
+			      uint8_t we_mask, uint8_t cdan_en,
+			      uint32_t ctx_hi, uint32_t ctx_lo)
+{
+	uint32_t *p;
+	uint32_t verb, rslt;
+
+	/* Start the management command */
+	p = qbman_swp_mc_start(s);
+	if (!p)
+		return -EBUSY;
+
+	/* Encode the caller-provided attributes */
+	qb_attr_code_encode(&code_cdan_cid, p, channelid);
+	qb_attr_code_encode(&code_cdan_we, p, we_mask);
+	qb_attr_code_encode(&code_cdan_en, p, cdan_en);
+	qb_attr_code_encode(&code_cdan_ctx_lo, p, ctx_lo);
+	qb_attr_code_encode(&code_cdan_ctx_hi, p, ctx_hi);
+	/* Complete the management command */
+	p = qbman_swp_mc_complete(s, p, p[0] | QBMAN_WQCHAN_CONFIGURE);
+
+	/* Decode the outcome */
+	verb = qb_attr_code_decode(&code_generic_verb, p);
+	rslt = qb_attr_code_decode(&code_generic_rslt, p);
+	BUG_ON(verb != QBMAN_WQCHAN_CONFIGURE);
+
+	/* Determine success or failure */
+	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {
+		pr_err("CDAN cQID %d failed: code = 0x%02x\n",
+		       channelid, rslt);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int qbman_swp_CDAN_set_context(struct qbman_swp *s, uint16_t channelid,
+			       uint32_t ctx_hi, uint32_t ctx_lo)
+{
+	return qbman_swp_CDAN_set(s, channelid,
+				  CODE_CDAN_WE_CTX,
+				  0, ctx_hi, ctx_lo);
+}
+EXPORT_SYMBOL(qbman_swp_CDAN_set_context);
+
+int qbman_swp_CDAN_enable(struct qbman_swp *s, uint16_t channelid)
+{
+	return qbman_swp_CDAN_set(s, channelid,
+				  CODE_CDAN_WE_EN,
+				  1, 0, 0);
+}
+EXPORT_SYMBOL(qbman_swp_CDAN_enable);
+
+int qbman_swp_CDAN_set_context_enable(struct qbman_swp *s, uint16_t channelid,
+				      uint32_t ctx_hi, uint32_t ctx_lo)
+{
+	return qbman_swp_CDAN_set(s, channelid,
+				  CODE_CDAN_WE_EN | CODE_CDAN_WE_CTX,
+				  1, ctx_hi, ctx_lo);
+}
+EXPORT_SYMBOL(qbman_swp_CDAN_set_context_enable);

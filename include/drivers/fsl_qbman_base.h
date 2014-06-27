@@ -25,9 +25,6 @@
 #ifndef _FSL_QBMAN_BASE_H
 #define _FSL_QBMAN_BASE_H
 
-#define QBMAN_MAX_DCP	12
-#define QBMAN_MAX_CEETM_INS 4
-
 /* Descriptor for a QBMan instance on the SoC. On partitions/targets that do not
  * control this QBMan instance, these values may simply be place-holders. The
  * idea is simply that we be able to distinguish between them, eg. so that SWP
@@ -36,36 +33,6 @@ struct qbman_block_desc {
 	void *ccsr_reg_bar; /* CCSR register map */
 	int irq_rerr;  /* Recoverable error interrupt line */
 	int irq_nrerr; /* Non-recoverable error interrupt line */
-	uint32_t num_swp; /* Number of software portals */
-	uint32_t num_swp_wqs; /* Number of SWP WQs */
-	uint32_t num_int_fqs; /* Number of internal FQs */
-	uint32_t num_fq_cgs; /* Number of FQ CGs */
-	uint32_t num_bpids; /* Number of BMan buffer pools */
-	uint32_t num_qds; /* Number of QDs */
-	uint32_t num_qprs; /* Number of QPRs */
-	uint32_t num_odps_orps; /* Number of ODPs and ORPs */
-	uint32_t num_replication_records; /* Enqueue Replication list records */
-	uint32_t max_in_flight_replications;
-	/* Enqueue replication, max in flight replications */
-	struct {
-		int valid;
-		/* is DCP valid */
-		char *name;
-		/* DCP name; e.g AIOP */
-		int ceetm_support;
-		/* DCP using either CEETM or FQ/WQ. */
-		uint32_t num_fq_wq_channels;
-		/* Number of FQ/WQ channels. */
-		struct {
-			int valid; /* is instance valid */
-			uint32_t num_lnis;
-			/* Number of CEETM LNIs */
-			uint32_t num_cq_channels;
-			/* Number of CEETM channels. */
-			uint32_t num_ccg;
-			/* Number of CEETM class congestion groups (CCG). */
-		} ceetm_instance[QBMAN_MAX_CEETM_INS];
-	} dcp[QBMAN_MAX_DCP];
 };
 
 /* Descriptor for a QBMan software portal, expressed in terms that make sense to

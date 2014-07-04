@@ -109,6 +109,13 @@ INSTALL_LIB_FLAGS ?= --mode=644
 INSTALL_OTHER_FLAGS ?= --mode=644
 MAKE_TOUCHFILE := .Makefile.touch
 
+EXT_LIBS       :=
+ifdef SYSROOT
+  CFLAGS        += --sysroot=$(SYSROOT)
+  LDFLAGS       += --sysroot=$(SYSROOT)
+  EXT_LIBS      += --sysroot=$(SYSROOT)
+endif
+
 #----=[ Control verbosity ]=----
 ifndef V
  Q := @
@@ -215,7 +222,7 @@ $(LIB_DIR)/lib$(1)$(LIBSUFFIX):$($(1)_objs) | $(LIB_DIR)
 	$(Q)echo " [LIB] $$(notdir $$@)"
 	$(Q)$(RM) $$@
 ifeq (shared,$(LINKTYPE))
-	$(Q)$(CC) $(ARFLAGS) $$@ $($(1)_objs)
+	$(Q)$(CC) $(EXT_LIBS) $(ARFLAGS) $$@ $($(1)_objs)
 else
 	$(Q)$(AR) $(ARFLAGS) $$@ $($(1)_objs)
 endif

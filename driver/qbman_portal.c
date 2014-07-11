@@ -553,8 +553,10 @@ const struct qbman_dq_entry *qbman_swp_dqrr_next(struct qbman_swp *s)
 	/* VDQCR "no longer busy" hook - if VDQCR shows "busy" and this is a
 	 * VDQCR result, mark it as non-busy. */
 	if (s->vdq.busy) {
+		uint32_t flags = qbman_dq_entry_DQ_flags(dq);
 		response_verb = qb_attr_code_decode(&code_dqrr_response, &verb);
-		if (response_verb == QBMAN_DQRR_RESPONSE_DQ)
+		if ((response_verb == QBMAN_DQRR_RESPONSE_DQ) &&
+				(flags & QBMAN_DQ_STAT_VOLATILE))
 			s->vdq.busy = 0;
 	}
 	qbman_cena_invalidate_prefetch(&s->sys,

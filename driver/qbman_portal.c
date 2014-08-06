@@ -371,7 +371,7 @@ void qbman_swp_push_get(struct qbman_swp *s, uint8_t channel_idx, int *enabled)
 {
 	struct qb_attr_code code = CODE_SDQCR_DQSRC(channel_idx);
 	BUG_ON(channel_idx > 15);
-	*enabled = qb_attr_code_decode(&code, &s->sdq);
+	*enabled = (int)qb_attr_code_decode(&code, &s->sdq);
 }
 EXPORT_SYMBOL(qbman_swp_push_get);
 
@@ -707,14 +707,14 @@ EXPORT_SYMBOL(qbman_dq_entry_DQ_flags);
 uint16_t qbman_dq_entry_DQ_seqnum(const struct qbman_dq_entry *dq)
 {
 	const uint32_t *p = qb_cl(dq);
-	return qb_attr_code_decode(&code_dqrr_seqnum, p);
+	return (uint16_t)qb_attr_code_decode(&code_dqrr_seqnum, p);
 }
 EXPORT_SYMBOL(qbman_dq_entry_DQ_seqnum);
 
 uint16_t qbman_dq_entry_DQ_odpid(const struct qbman_dq_entry *dq)
 {
 	const uint32_t *p = qb_cl(dq);
-	return qb_attr_code_decode(&code_dqrr_odpid, p);
+	return (uint16_t)qb_attr_code_decode(&code_dqrr_odpid, p);
 }
 EXPORT_SYMBOL(qbman_dq_entry_DQ_odpid);
 
@@ -759,6 +759,43 @@ const struct qbman_fd *qbman_dq_entry_DQ_fd(const struct qbman_dq_entry *dq)
 	return (const struct qbman_fd *)&p[8];
 }
 EXPORT_SYMBOL(qbman_dq_entry_DQ_fd);
+
+/**************************************/
+/* Parsing state-change notifications */
+/**************************************/
+
+static struct qb_attr_code code_scn_state = QB_CODE(0, 16, 8);
+static struct qb_attr_code code_scn_rid = QB_CODE(1, 0, 24);
+static struct qb_attr_code code_scn_ctx_lo = QB_CODE(2, 0, 32);
+static struct qb_attr_code code_scn_ctx_hi = QB_CODE(3, 0, 32);
+
+uint8_t qbman_dq_entry_SCN_state(const struct qbman_dq_entry *dq)
+{
+	const uint32_t *p = qb_cl(dq);
+	return (uint8_t)qb_attr_code_decode(&code_scn_state, p);
+}
+EXPORT_SYMBOL(qbman_dq_entry_SCN_state);
+
+uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *dq)
+{
+	const uint32_t *p = qb_cl(dq);
+	return qb_attr_code_decode(&code_scn_rid, p);
+}
+EXPORT_SYMBOL(qbman_dq_entry_SCN_rid);
+
+uint32_t qbman_dq_entry_SCN_ctx_lo(const struct qbman_dq_entry *dq)
+{
+	const uint32_t *p = qb_cl(dq);
+	return qb_attr_code_decode(&code_scn_ctx_lo, p);
+}
+EXPORT_SYMBOL(qbman_dq_entry_SCN_ctx_lo);
+
+uint32_t qbman_dq_entry_SCN_ctx_hi(const struct qbman_dq_entry *dq)
+{
+	const uint32_t *p = qb_cl(dq);
+	return qb_attr_code_decode(&code_scn_ctx_hi, p);
+}
+EXPORT_SYMBOL(qbman_dq_entry_SCN_ctx_hi);
 
 /******************/
 /* Buffer release */

@@ -180,6 +180,13 @@ int qbman_dq_entry_has_newtoken(struct qbman_swp *,
 
 /* DQRR entries may contain non-dequeue results, ie. notifications */
 int qbman_dq_entry_is_DQ(const struct qbman_dq_entry *);
+/* All the non-dequeue results (FQDAN/CDAN/CSCN/...) are "state change
+ * notifications" of one type or another. Some APIs apply to all of them, of the
+ * form qbman_dq_entry_SCN_***(). */
+static inline int qbman_dq_entry_is_SCN(const struct qbman_dq_entry *dq)
+{
+	return !qbman_dq_entry_is_DQ(dq);
+}
 /* Recognise different notification types, only required if the user allows for
  * these to occur, and cares about them when they do. */
 int qbman_dq_entry_is_FQDAN(const struct qbman_dq_entry *);
@@ -227,6 +234,26 @@ uint32_t qbman_dq_entry_DQ_fqd_ctx_hi(const struct qbman_dq_entry *);
 uint32_t qbman_dq_entry_DQ_fqd_ctx_lo(const struct qbman_dq_entry *);
 const struct qbman_fd *qbman_dq_entry_DQ_fd(const struct qbman_dq_entry *);
 							/* Frame Descriptor */
+/* State-change notifications (FQDAN/CDAN/CSCN/...). */
+uint8_t qbman_dq_entry_SCN_state(const struct qbman_dq_entry *);
+uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *);
+uint32_t qbman_dq_entry_SCN_ctx_lo(const struct qbman_dq_entry *);
+uint32_t qbman_dq_entry_SCN_ctx_hi(const struct qbman_dq_entry *);
+/* Type-specific "resource IDs". Mainly for illustration purposes, though it
+ * also gives the appropriate type widths. */
+#define qbman_dq_entry_FQDAN_fqid(dq) qbman_dq_entry_SCN_rid(dq)
+#define qbman_dq_entry_FQRN_fqid(dq) qbman_dq_entry_SCN_rid(dq)
+#define qbman_dq_entry_FQRNI_fqid(dq) qbman_dq_entry_SCN_rid(dq)
+#define qbman_dq_entry_FQPN_fqid(dq) qbman_dq_entry_SCN_rid(dq)
+#define qbman_dq_entry_CDAN_cid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
+#define qbman_dq_entry_CSCN_cgid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
+#define qbman_dq_entry_CGCU_cgid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
+#define qbman_dq_entry_BPSCN_bpid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
+/* All message types treat 'ctx_[lo/hi]' as 64-bit context (ie. FQDAN's get
+ * FQD_CTX, CDAN's get CDAN_CTX, etc) except CGCU, which reports 'I_CNT' of the
+ * CGR or CCGR. */
+#define qbman_dq_entry_CGCU_cnt_lo(dq) qbman_dq_entry_SCN_ctx_lo(dq)
+#define qbman_dq_entry_CGCU_cnt_hi(dq) qbman_dq_entry_SCN_ctx_hi(dq)
 
 	/************/
 	/* Enqueues */

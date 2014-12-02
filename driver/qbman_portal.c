@@ -34,6 +34,10 @@
 #define QBMAN_CINH_SWP_DCAP    0xac0
 #define QBMAN_CINH_SWP_SDQCR   0xb00
 #define QBMAN_CINH_SWP_RAR     0xcc0
+#define QBMAN_CINH_SWP_ISR     0xe00
+#define QBMAN_CINH_SWP_IER     0xe40
+#define QBMAN_CINH_SWP_ISDR    0xe80
+#define QBMAN_CINH_SWP_IIR     0xec0
 
 /* CENA register offsets */
 #define QBMAN_CENA_SWP_EQCR(n) (0x000 + ((uint32_t)(n) << 6))
@@ -130,6 +134,58 @@ const struct qbman_swp_desc *qbman_swp_get_desc(struct qbman_swp *p)
 {
 	return p->desc;
 }
+
+/**************/
+/* Interrupts */
+/**************/
+
+uint32_t qbman_swp_interrupt_get_vanish(struct qbman_swp *p)
+{
+	return qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_ISDR);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_get_vanish);
+
+void qbman_swp_interrupt_set_vanish(struct qbman_swp *p, uint32_t mask)
+{
+	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_ISDR, mask);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_set_vanish);
+
+uint32_t qbman_swp_interrupt_read_status(struct qbman_swp *p)
+{
+	return qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_ISR);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_read_status);
+
+void qbman_swp_interrupt_clear_status(struct qbman_swp *p, uint32_t mask)
+{
+	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_ISR, mask);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_clear_status);
+
+uint32_t qbman_swp_interrupt_get_trigger(struct qbman_swp *p)
+{
+	return qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_IER);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_get_trigger);
+
+void qbman_swp_interrupt_set_trigger(struct qbman_swp *p, uint32_t mask)
+{
+	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_IER, mask);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_set_trigger);
+
+int qbman_swp_interrupt_get_inhibit(struct qbman_swp *p)
+{
+	return qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_IIR);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_get_inhibit);
+
+void qbman_swp_interrupt_set_inhibit(struct qbman_swp *p, int inhibit)
+{
+	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_IIR, inhibit ? 0xffffffff : 0);
+}
+EXPORT_SYMBOL(qbman_swp_interrupt_set_inhibit);
 
 /***********************/
 /* Management commands */

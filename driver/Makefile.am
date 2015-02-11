@@ -25,4 +25,4 @@
 
 lib_LIBRARIES = qbman
 
-qbman_SOURCES := qbman_portal.c
+qbman_SOURCES := qbman_portal.c qbman_debug.c

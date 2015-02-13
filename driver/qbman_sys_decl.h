@@ -48,13 +48,5 @@
 	/****************/
 	/* arch assists */
 	/****************/
-
-static inline void dcbz(void *ptr)
-{
-	uint32_t *p = ptr;
-	BUG_ON((unsigned long)ptr & 63);
-	p[0] = p[1] = p[2] = p[3] = p[4] = p[5] = p[6] = p[7] = p[8] = p[9] =
-		p[10] = p[11] = p[12] = p[13] = p[14] = p[15] = 0;
-}
-
-#define lwsync()
+#define dcbz(p) { asm volatile("dc zva, %0" : : "r" (p) : "memory"); }
+#define lwsync() { asm volatile("dmb st" : : : "memory"); }

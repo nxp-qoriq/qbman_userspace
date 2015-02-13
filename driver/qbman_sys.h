@@ -43,12 +43,6 @@
 #undef QBMAN_CINH_TRACE
 #undef QBMAN_CENA_TRACE
 
-/* Temporarily define this to get around the fact that cache enabled mapping is
- * not working right now. Will remove this after uboot could map the cache
- * enabled portal memory.
- */
-#define QBMAN_CINH_ONLY
-
 static inline void word_copy(void *d, const void *s, unsigned int cnt)
 {
 	uint32_t *dd = d;
@@ -187,13 +181,8 @@ static inline void qbman_cena_write_complete(struct qbman_swp_sys *s,
 	hexdump(cmd, 64);
 #endif
 	for (loop = 15; loop >= 0; loop--)
-#ifdef QBMAN_CINH_ONLY
-		__raw_writel(shadow[loop], s->addr_cinh +
-					 offset + loop * 4);
-#else
 		__raw_writel(shadow[loop], s->addr_cena +
 					 offset + loop * 4);
-#endif
 }
 
 static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)
@@ -206,13 +195,8 @@ static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)
 #endif
 
 	for (loop = 0; loop < 16; loop++)
-#ifdef QBMAN_CINH_ONLY
-		shadow[loop] = __raw_readl(s->addr_cinh + offset
-					+ loop * 4);
-#else
 		shadow[loop] = __raw_readl(s->addr_cena + offset
 					+ loop * 4);
-#endif
 #ifdef QBMAN_CENA_TRACE
 	hexdump(shadow, 64);
 #endif
@@ -282,11 +266,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	BUG_ON(reg);
 #endif
-#ifdef QBMAN_CINH_ONLY
-	reg = qbman_set_swp_cfg(4, 1, 0, 3, 2, 3, 0, 1, 0, 1, 0, 0);
-#else
 	reg = qbman_set_swp_cfg(4, 0, 0, 3, 2, 3, 0, 1, 0, 1, 0, 0);
-#endif
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {

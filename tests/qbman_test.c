@@ -219,10 +219,13 @@ static void do_push_dequeue(struct qbman_swp *p)
 	int i, j;
 	const struct qbman_dq_entry *dq_storage1;
 	const struct qbman_fd *__fd;
+	int loopvar = 10;
 
 	pr_info("*****QBMan_test: Start push dequeue\n");
 	for (i = 0; i < NUM_DQ_FRAME; i++) {
-		dq_storage1 = qbman_swp_dqrr_next(p);
+		do {
+			dq_storage1 = qbman_swp_dqrr_next(p);
+		} while (!dq_storage1 && loopvar);
 		if (dq_storage1) {
 			__fd = qbman_dq_entry_DQ_fd(dq_storage1);
 			for (j = 0; j < 8; j++)
@@ -244,6 +247,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 	dma_addr_t dq_storage_phys;
 	const struct qbman_dq_entry *dq_storage1;
 	const struct qbman_fd *__fd;
+	int loopvar = 10;
 
 	pr_info("*****QBMan_test: Dequeue %d frames from FQ %d,"
 					" write dq entry in DQRR\n",
@@ -257,7 +261,9 @@ static void do_pull_dequeue(struct qbman_swp *p)
 
 		ret = qbman_swp_pull(p, &pulldesc);
 		BUG_ON(ret);
-		dq_storage1 = qbman_swp_dqrr_next(p);
+		do {
+			dq_storage1 = qbman_swp_dqrr_next(p);
+		} while (!dq_storage1 && loopvar);
 		if (dq_storage1) {
 			__fd = qbman_dq_entry_DQ_fd(dq_storage1);
 			for (j = 0; j < 8; j++)
@@ -287,8 +293,11 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
 		ret = qbman_swp_pull(p, &pulldesc);
 		BUG_ON(ret);
-		ret = qbman_dq_entry_has_newtoken(p, dq_storage,
+		loopvar = 10;
+		do {
+			ret = qbman_dq_entry_has_newtoken(p, dq_storage,
 							0xab + i);
+		} while (!ret && loopvar);
 		if (ret) {
 			for (j = 0; j < 8; j++)
 				fd_dq[i + NUM_DQ_IN_DQRR].words[j] =

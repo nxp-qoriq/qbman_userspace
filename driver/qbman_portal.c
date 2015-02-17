@@ -31,6 +31,7 @@
 
 /* CINH register offsets */
 #define QBMAN_CINH_SWP_EQAR    0x8c0
+#define QBMAN_CINH_SWP_DQPI    0xa00
 #define QBMAN_CINH_SWP_DCAP    0xac0
 #define QBMAN_CINH_SWP_SDQCR   0xb00
 #define QBMAN_CINH_SWP_RAR     0xcc0
@@ -89,7 +90,20 @@ enum qbman_sdqcr_fc {
 /*********************************/
 
 /* Software portals should always be in the power-on state when we initialise,
- * due to the CCSR-based portal reset functionality that MC has. */
+ * due to the CCSR-based portal reset functionality that MC has.
+ *
+ * Erk! Turns out that QMan versions prior to 4.1 do not correctly reset DQRR
+ * valid-bits, so we need to support a workaround where we don't trust
+ * valid-bits when detecting new entries until any stale ring entries have been
+ * overwritten at least once. The idea is that we read PI for the first few
+ * entries, then switch to valid-bit after that. The trick is to clear the
+ * bug-work-around boolean once the PI wraps around the ring for the first time.
+ *
+ * Note: this still carries a slight additional cost once the decrementer hits
+ * zero, so ideally the workaround should only be compiled in if the compiled
+ * image needs to support affected chips. We use WORKAROUND_DQRR_RESET_BUG for
+ * this.
+ */
 struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 {
 	int ret;
@@ -109,6 +123,12 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	p->vdq.valid_bit = QB_VALID_BIT;
 	p->dqrr.next_idx = 0;
 	p->dqrr.valid_bit = QB_VALID_BIT;
+	/* TODO: should also read PI/CI type registers and check that they're on
+	 * PoR values. If we're asked to initialise portals that aren't in reset
+	 * state, bad things will follow. */
+#ifdef WORKAROUND_DQRR_RESET_BUG
+	p->dqrr.reset_bug = 1;
+#endif
 	ret = qbman_swp_sys_init(&p->sys, d);
 	if (ret) {
 		kfree(p);
@@ -581,6 +601,7 @@ static struct qb_attr_code code_dqrr_ctx_hi = QB_CODE(7, 0, 32);
 #define QBMAN_DQRR_RESPONSE_BPSCN     0x29
 #define QBMAN_DQRR_RESPONSE_CSCN_WQ   0x2a
 
+static struct qb_attr_code code_dqpi_pi = QB_CODE(0, 0, 4);
 
 /* NULL return if there are no unconsumed DQRR entries. Returns a DQRR entry
  * only once, so repeated calls can return a sequence of DQRR entries, without
@@ -589,11 +610,51 @@ const struct qbman_dq_entry *qbman_swp_dqrr_next(struct qbman_swp *s)
 {
 	uint32_t verb;
 	uint32_t response_verb;
-	const struct qbman_dq_entry *dq = qbman_cena_read(&s->sys,
-					QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
-	const uint32_t *p = qb_cl(dq);
+	const struct qbman_dq_entry *dq;
+	const uint32_t *p;
+
+	/* Before using valid-bit to detect if something is there, we have to
+	* handle the case of the DQRR reset bug... */
+#ifdef WORKAROUND_DQRR_RESET_BUG
+	if (unlikely(s->dqrr.reset_bug)) {
+		/* We pick up new entries by cache-inhibited producer index,
+		 * which means that a non-coherent mapping would require us to
+		 * invalidate and read *only* once that PI has indicated that
+		 * there's an entry here. The first trip around the DQRR ring
+		 * will be much less efficient than all subsequent trips around
+		 * it...
+		 */
+		uint32_t dqpi = qbman_cinh_read(&s->sys, QBMAN_CINH_SWP_DQPI);
+		uint32_t pi = qb_attr_code_decode(&code_dqpi_pi, &dqpi);
+		/* there are new entries iff pi != next_idx */
+		if (pi == s->dqrr.next_idx)
+			return NULL;
+		/* if next_idx is/was the last ring index, and 'pi' is
+		 * different, we can disable the workaround as all the ring
+		 * entries have now been DMA'd to so valid-bit checking is
+		 * repaired. Note: this logic needs to be based on next_idx
+		 * (which increments one at a time), rather than on pi (which
+		 * can burst and wrap-around between our snapshots of it).
+		 */
+		if (s->dqrr.next_idx == (QBMAN_DQRR_SIZE - 1)) {
+			pr_debug("DEBUG: next_idx=%d, pi=%d, clear reset bug\n",
+				s->dqrr.next_idx, pi);
+			s->dqrr.reset_bug = 0;
+		}
+		qbman_cena_invalidate_prefetch(&s->sys,
+				QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+}
+#endif
+	dq = qbman_cena_read(&s->sys, QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+	p = qb_cl(dq);
 	verb = qb_attr_code_decode(&code_dqrr_verb, p);
-	/* If the valid-bit isn't of the expected polarity, nothing there */
+	/* If the valid-bit isn't of the expected polarity, nothing there. Note,
+	 * in the DQRR reset bug workaround, we shouldn't need to skip these
+	 * check, because we've already determined that a new entry is available
+	 * and we've invalidated the cacheline before reading it, so the
+	 * valid-bit behaviour is repaired and should tell us what we already
+	 * knew from reading PI.
+	 */
 	if ((verb & QB_VALID_BIT) != s->dqrr.valid_bit) {
 		qbman_cena_invalidate_prefetch(&s->sys,
 					QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
@@ -602,7 +663,7 @@ const struct qbman_dq_entry *qbman_swp_dqrr_next(struct qbman_swp *s)
 	/* There's something there. Move "next_idx" attention to the next ring
 	 * entry (and prefetch it) before returning what we found. */
 	s->dqrr.next_idx++;
-	s->dqrr.next_idx &= 3; /* Wrap around at 4 */
+	s->dqrr.next_idx &= QBMAN_DQRR_SIZE - 1; /* Wrap around at 4 */
 	/* TODO: it's possible to do all this without conditionals, optimise it
 	 * later. */
 	if (!s->dqrr.next_idx)

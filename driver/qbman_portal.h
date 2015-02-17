@@ -195,6 +195,11 @@ static inline uint32_t qb_attr_code_decode(const struct qb_attr_code *code,
 {
 	return d32_uint32_t(code->lsoffset, code->width, cacheline[code->word]);
 }
+static inline uint64_t qb_attr_code_decode_64(const struct qb_attr_code *code,
+				      const uint64_t *cacheline)
+{
+	return cacheline[code->word / 2];
+}
 
 /* encode a field to a cacheline */
 static inline void qb_attr_code_encode(const struct qb_attr_code *code,
@@ -203,6 +208,11 @@ static inline void qb_attr_code_encode(const struct qb_attr_code *code,
 	cacheline[code->word] =
 		r32_uint32_t(code->lsoffset, code->width, cacheline[code->word])
 		| e32_uint32_t(code->lsoffset, code->width, val);
+}
+static inline void qb_attr_code_encode_64(const struct qb_attr_code *code,
+				       uint64_t *cacheline, uint64_t val)
+{
+	cacheline[code->word / 2] = val;
 }
 
 /* Small-width signed values (two's-complement) will decode into medium-width

@@ -237,8 +237,7 @@ const struct qbman_fd *qbman_dq_entry_DQ_fd(const struct qbman_dq_entry *);
 /* State-change notifications (FQDAN/CDAN/CSCN/...). */
 uint8_t qbman_dq_entry_SCN_state(const struct qbman_dq_entry *);
 uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_SCN_ctx_lo(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_SCN_ctx_hi(const struct qbman_dq_entry *);
+uint32_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *);
 /* Type-specific "resource IDs". Mainly for illustration purposes, though it
  * also gives the appropriate type widths. */
 #define qbman_dq_entry_FQDAN_fqid(dq) qbman_dq_entry_SCN_rid(dq)
@@ -249,11 +248,6 @@ uint32_t qbman_dq_entry_SCN_ctx_hi(const struct qbman_dq_entry *);
 #define qbman_dq_entry_CSCN_cgid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
 #define qbman_dq_entry_CGCU_cgid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
 #define qbman_dq_entry_BPSCN_bpid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
-/* All message types treat 'ctx_[lo/hi]' as 64-bit context (ie. FQDAN's get
- * FQD_CTX, CDAN's get CDAN_CTX, etc) except CGCU, which reports 'I_CNT' of the
- * CGR or CCGR. */
-#define qbman_dq_entry_CGCU_cnt_lo(dq) qbman_dq_entry_SCN_ctx_lo(dq)
-#define qbman_dq_entry_CGCU_cnt_hi(dq) qbman_dq_entry_SCN_ctx_hi(dq)
 
 	/************/
 	/* Enqueues */
@@ -400,9 +394,9 @@ int qbman_swp_fq_xoff(struct qbman_swp *, uint32_t fqid);
  * (which shows up in each CDAN message) each time they reenable, as a single
  * command to hardware. */
 int qbman_swp_CDAN_set_context(struct qbman_swp *, uint16_t channelid,
-				uint32_t ctx_hi, uint32_t ctx_lo);
+				uint64_t ctx);
 int qbman_swp_CDAN_enable(struct qbman_swp *, uint16_t channelid);
 int qbman_swp_CDAN_set_context_enable(struct qbman_swp *, uint16_t channelid,
-				      uint32_t ctx_hi, uint32_t ctx_lo);
+				      uint64_t ctx);
 
 #endif /* !_FSL_QBMAN_PORTAL_H */

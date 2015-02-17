@@ -290,7 +290,6 @@ static struct qb_attr_code code_eq_qd_pri = QB_CODE(4, 16, 4);
 static struct qb_attr_code code_eq_rsp_stash = QB_CODE(5, 16, 1);
 static struct qb_attr_code code_eq_rsp_id = QB_CODE(5, 24, 8);
 static struct qb_attr_code code_eq_rsp_lo = QB_CODE(6, 0, 32);
-static struct qb_attr_code code_eq_rsp_hi = QB_CODE(7, 0, 32);
 
 enum qbman_eq_cmd_e {
 	/* No enqueue, primarily for plugging ORP gaps for dropped frames */
@@ -362,8 +361,7 @@ void qbman_eq_desc_set_response(struct qbman_eq_desc *d,
 				int stash)
 {
 	uint32_t *cl = qb_cl(d);
-	qb_attr_code_encode(&code_eq_rsp_lo, cl, lower32(storage_phys));
-	qb_attr_code_encode(&code_eq_rsp_hi, cl, upper32(storage_phys));
+	qb_attr_code_encode_64(&code_eq_rsp_lo, (uint64_t *)cl, storage_phys);
 	qb_attr_code_encode(&code_eq_rsp_stash, cl, !!stash);
 }
 EXPORT_SYMBOL(qbman_eq_desc_set_response);
@@ -474,7 +472,6 @@ static struct qb_attr_code code_pull_numframes = QB_CODE(0, 8, 4);
 static struct qb_attr_code code_pull_token = QB_CODE(0, 16, 8);
 static struct qb_attr_code code_pull_dqsource = QB_CODE(1, 0, 24);
 static struct qb_attr_code code_pull_rsp_lo = QB_CODE(2, 0, 32);
-static struct qb_attr_code code_pull_rsp_hi = QB_CODE(3, 0, 32);
 
 enum qb_pull_dt_e {
 	qb_pull_dt_channel,
@@ -503,8 +500,7 @@ void qbman_pull_desc_set_storage(struct qbman_pull_desc *d,
 	}
 	qb_attr_code_encode(&code_pull_rls, cl, 1);
 	qb_attr_code_encode(&code_pull_stash, cl, !!stash);
-	qb_attr_code_encode(&code_pull_rsp_lo, cl, lower32(storage_phys));
-	qb_attr_code_encode(&code_pull_rsp_hi, cl, upper32(storage_phys));
+	qb_attr_code_encode_64(&code_pull_rsp_lo, (uint64_t *)cl, storage_phys);
 }
 EXPORT_SYMBOL(qbman_pull_desc_set_storage);
 
@@ -588,7 +584,6 @@ static struct qb_attr_code code_dqrr_fqid = QB_CODE(2, 0, 24);
 static struct qb_attr_code code_dqrr_byte_count = QB_CODE(4, 0, 32);
 static struct qb_attr_code code_dqrr_frame_count = QB_CODE(5, 0, 24);
 static struct qb_attr_code code_dqrr_ctx_lo = QB_CODE(6, 0, 32);
-static struct qb_attr_code code_dqrr_ctx_hi = QB_CODE(7, 0, 32);
 
 #define QBMAN_DQRR_RESPONSE_DQ        0x60
 #define QBMAN_DQRR_RESPONSE_FQRN      0x21
@@ -857,19 +852,13 @@ uint32_t qbman_dq_entry_DQ_frame_count(const struct qbman_dq_entry *dq)
 }
 EXPORT_SYMBOL(qbman_dq_entry_DQ_frame_count);
 
-uint32_t qbman_dq_entry_DQ_fqd_ctx_hi(const struct qbman_dq_entry *dq)
+uint32_t qbman_dq_entry_DQ_fqd_ctx(const struct qbman_dq_entry *dq)
 {
-	const uint32_t *p = qb_cl(dq);
-	return qb_attr_code_decode(&code_dqrr_ctx_hi, p);
-}
-EXPORT_SYMBOL(qbman_dq_entry_DQ_fqd_ctx_hi);
+	const uint64_t *p = (uint64_t *)qb_cl(dq);
 
-uint32_t qbman_dq_entry_DQ_fqd_ctx_lo(const struct qbman_dq_entry *dq)
-{
-	const uint32_t *p = qb_cl(dq);
-	return qb_attr_code_decode(&code_dqrr_ctx_lo, p);
+	return qb_attr_code_decode_64(&code_dqrr_ctx_lo, p);
 }
-EXPORT_SYMBOL(qbman_dq_entry_DQ_fqd_ctx_lo);
+EXPORT_SYMBOL(qbman_dq_entry_DQ_fqd_ctx);
 
 const struct qbman_fd *qbman_dq_entry_DQ_fd(const struct qbman_dq_entry *dq)
 {
@@ -885,7 +874,6 @@ EXPORT_SYMBOL(qbman_dq_entry_DQ_fd);
 static struct qb_attr_code code_scn_state = QB_CODE(0, 16, 8);
 static struct qb_attr_code code_scn_rid = QB_CODE(1, 0, 24);
 static struct qb_attr_code code_scn_ctx_lo = QB_CODE(2, 0, 32);
-static struct qb_attr_code code_scn_ctx_hi = QB_CODE(3, 0, 32);
 
 uint8_t qbman_dq_entry_SCN_state(const struct qbman_dq_entry *dq)
 {
@@ -901,19 +889,13 @@ uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *dq)
 }
 EXPORT_SYMBOL(qbman_dq_entry_SCN_rid);
 
-uint32_t qbman_dq_entry_SCN_ctx_lo(const struct qbman_dq_entry *dq)
+uint32_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *dq)
 {
-	const uint32_t *p = qb_cl(dq);
-	return qb_attr_code_decode(&code_scn_ctx_lo, p);
-}
-EXPORT_SYMBOL(qbman_dq_entry_SCN_ctx_lo);
+	const uint64_t *p = (uint64_t *)qb_cl(dq);
 
-uint32_t qbman_dq_entry_SCN_ctx_hi(const struct qbman_dq_entry *dq)
-{
-	const uint32_t *p = qb_cl(dq);
-	return qb_attr_code_decode(&code_scn_ctx_hi, p);
+	return qb_attr_code_decode_64(&code_scn_ctx_lo, p);
 }
-EXPORT_SYMBOL(qbman_dq_entry_SCN_ctx_hi);
+EXPORT_SYMBOL(qbman_dq_entry_SCN_ctx);
 
 /******************/
 /* Buffer release */
@@ -1094,7 +1076,6 @@ static struct qb_attr_code code_cdan_cid = QB_CODE(0, 16, 12);
 static struct qb_attr_code code_cdan_we = QB_CODE(1, 0, 8);
 static struct qb_attr_code code_cdan_en = QB_CODE(1, 8, 1);
 static struct qb_attr_code code_cdan_ctx_lo = QB_CODE(2, 0, 32);
-static struct qb_attr_code code_cdan_ctx_hi = QB_CODE(3, 0, 32);
 
 /* Hide "ICD" for now as we don't use it, don't set it, and don't test it, so it
  * would be irresponsible to expose it. */
@@ -1103,7 +1084,7 @@ static struct qb_attr_code code_cdan_ctx_hi = QB_CODE(3, 0, 32);
 
 static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 			      uint8_t we_mask, uint8_t cdan_en,
-			      uint32_t ctx_hi, uint32_t ctx_lo)
+			      uint64_t ctx)
 {
 	uint32_t *p;
 	uint32_t verb, rslt;
@@ -1117,8 +1098,7 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 	qb_attr_code_encode(&code_cdan_cid, p, channelid);
 	qb_attr_code_encode(&code_cdan_we, p, we_mask);
 	qb_attr_code_encode(&code_cdan_en, p, cdan_en);
-	qb_attr_code_encode(&code_cdan_ctx_lo, p, ctx_lo);
-	qb_attr_code_encode(&code_cdan_ctx_hi, p, ctx_hi);
+	qb_attr_code_encode_64(&code_cdan_ctx_lo, (uint64_t *)p, ctx);
 	/* Complete the management command */
 	p = qbman_swp_mc_complete(s, p, p[0] | QBMAN_WQCHAN_CONFIGURE);
 
@@ -1138,11 +1118,11 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 }
 
 int qbman_swp_CDAN_set_context(struct qbman_swp *s, uint16_t channelid,
-			       uint32_t ctx_hi, uint32_t ctx_lo)
+			       uint64_t ctx)
 {
 	return qbman_swp_CDAN_set(s, channelid,
 				  CODE_CDAN_WE_CTX,
-				  0, ctx_hi, ctx_lo);
+				  0, ctx);
 }
 EXPORT_SYMBOL(qbman_swp_CDAN_set_context);
 
@@ -1150,15 +1130,15 @@ int qbman_swp_CDAN_enable(struct qbman_swp *s, uint16_t channelid)
 {
 	return qbman_swp_CDAN_set(s, channelid,
 				  CODE_CDAN_WE_EN,
-				  1, 0, 0);
+				  1, 0);
 }
 EXPORT_SYMBOL(qbman_swp_CDAN_enable);
 
 int qbman_swp_CDAN_set_context_enable(struct qbman_swp *s, uint16_t channelid,
-				      uint32_t ctx_hi, uint32_t ctx_lo)
+				      uint64_t ctx)
 {
 	return qbman_swp_CDAN_set(s, channelid,
 				  CODE_CDAN_WE_EN | CODE_CDAN_WE_CTX,
-				  1, ctx_hi, ctx_lo);
+				  1, ctx);
 }
 EXPORT_SYMBOL(qbman_swp_CDAN_set_context_enable);

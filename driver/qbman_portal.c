@@ -852,7 +852,7 @@ uint32_t qbman_dq_entry_DQ_frame_count(const struct qbman_dq_entry *dq)
 }
 EXPORT_SYMBOL(qbman_dq_entry_DQ_frame_count);
 
-uint32_t qbman_dq_entry_DQ_fqd_ctx(const struct qbman_dq_entry *dq)
+uint64_t qbman_dq_entry_DQ_fqd_ctx(const struct qbman_dq_entry *dq)
 {
 	const uint64_t *p = (uint64_t *)qb_cl(dq);
 

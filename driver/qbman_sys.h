@@ -180,9 +180,11 @@ static inline void qbman_cena_write_complete(struct qbman_swp_sys *s,
 		s->addr_cena, s->idx, offset, shadow);
 	hexdump(cmd, 64);
 #endif
-	for (loop = 15; loop >= 0; loop--)
+	for (loop = 15; loop >= 1; loop--)
 		__raw_writel(shadow[loop], s->addr_cena +
 					 offset + loop * 4);
+	lwsync();
+		__raw_writel(shadow[0], s->addr_cena + offset);
 }
 
 static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)

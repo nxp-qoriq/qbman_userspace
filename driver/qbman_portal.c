@@ -889,7 +889,7 @@ uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *dq)
 }
 EXPORT_SYMBOL(qbman_dq_entry_SCN_rid);
 
-uint32_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *dq)
+uint64_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *dq)
 {
 	const uint64_t *p = (uint64_t *)qb_cl(dq);
 

@@ -230,14 +230,13 @@ uint16_t qbman_dq_entry_DQ_odpid(const struct qbman_dq_entry *);
 uint32_t qbman_dq_entry_DQ_fqid(const struct qbman_dq_entry *);
 uint32_t qbman_dq_entry_DQ_byte_count(const struct qbman_dq_entry *);
 uint32_t qbman_dq_entry_DQ_frame_count(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_DQ_fqd_ctx_hi(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_DQ_fqd_ctx_lo(const struct qbman_dq_entry *);
+uint64_t qbman_dq_entry_DQ_fqd_ctx(const struct qbman_dq_entry *);
 const struct qbman_fd *qbman_dq_entry_DQ_fd(const struct qbman_dq_entry *);
 							/* Frame Descriptor */
 /* State-change notifications (FQDAN/CDAN/CSCN/...). */
 uint8_t qbman_dq_entry_SCN_state(const struct qbman_dq_entry *);
 uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *);
+uint64_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *);
 /* Type-specific "resource IDs". Mainly for illustration purposes, though it
  * also gives the appropriate type widths. */
 #define qbman_dq_entry_FQDAN_fqid(dq) qbman_dq_entry_SCN_rid(dq)

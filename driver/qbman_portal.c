@@ -556,7 +556,7 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 		return -EBUSY;
 	s->vdq.busy = 1;
 	s->vdq.storage = *(void **)&cl[4];
-	s->vdq.token = qb_attr_code_decode(&code_pull_token, cl);
+	qb_attr_code_encode(&code_pull_token, cl, 1);
 	p = qbman_cena_write_start(&s->sys, QBMAN_CENA_SWP_VDQCR);
 	word_copy(&p[1], &cl[1], 3);
 	/* Set the verb byte, have to substitute in the valid-bit */
@@ -687,17 +687,8 @@ EXPORT_SYMBOL(qbman_swp_dqrr_consume);
 /* Polling user-provided storage */
 /*********************************/
 
-void qbman_dq_entry_set_oldtoken(struct qbman_dq_entry *dq,
-				 unsigned int num_entries,
-				 uint8_t oldtoken)
-{
-	memset(dq, oldtoken, num_entries * sizeof(*dq));
-}
-EXPORT_SYMBOL(qbman_dq_entry_set_oldtoken);
-
-int qbman_dq_entry_has_newtoken(struct qbman_swp *s,
-				const struct qbman_dq_entry *dq,
-				uint8_t newtoken)
+int qbman_dq_entry_has_new_result(struct qbman_swp *s,
+				  const struct qbman_dq_entry *dq)
 {
 	/* To avoid converting the little-endian DQ entry to host-endian prior
 	 * to us knowing whether there is a valid entry or not (and run the
@@ -715,8 +706,9 @@ int qbman_dq_entry_has_newtoken(struct qbman_swp *s,
 	uint32_t token;
 
 	token = qb_attr_code_decode(&code_dqrr_tok_detect, &p[1]);
-	if (token != newtoken)
+	if (token != 1)
 		return 0;
+	qb_attr_code_encode(&code_dqrr_tok_detect, &p[1], 0);
 
 	/* Only now do we convert from hardware to host endianness. Also, as we
 	 * are returning success, the user has promised not to call us again, so
@@ -732,7 +724,7 @@ int qbman_dq_entry_has_newtoken(struct qbman_swp *s,
 		s->vdq.busy = 0;
 	return 1;
 }
-EXPORT_SYMBOL(qbman_dq_entry_has_newtoken);
+EXPORT_SYMBOL(qbman_dq_entry_has_new_result);
 
 /********************************/
 /* Categorising dequeue entries */

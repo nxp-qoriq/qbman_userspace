@@ -256,7 +256,6 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		qbman_pull_desc_clear(&pulldesc);
 		qbman_pull_desc_set_storage(&pulldesc, NULL, 0, 0);
 		qbman_pull_desc_set_numframes(&pulldesc, 1);
-		qbman_pull_desc_set_token(&pulldesc, 0xab);
 		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
 
 		ret = qbman_swp_pull(p, &pulldesc);
@@ -282,21 +281,18 @@ static void do_pull_dequeue(struct qbman_swp *p)
 					NUM_DQ_IN_MEM, QBMAN_TEST_FQID);
 	dq_storage = (struct qbman_dq_entry *)mem_map.ptr;
 	for (i = 0; i < NUM_DQ_IN_MEM; i++) {
-		qbman_dq_entry_set_oldtoken(dq_storage, 1, i);
 		dq_storage_phys = (dma_addr_t)(mem_map.phys_addr +
 				 i * sizeof(struct qbman_dq_entry));
 		qbman_pull_desc_clear(&pulldesc);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 						dq_storage_phys, 0);
 		qbman_pull_desc_set_numframes(&pulldesc, 1);
-		qbman_pull_desc_set_token(&pulldesc, 0xab + i);
 		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
 		ret = qbman_swp_pull(p, &pulldesc);
 		BUG_ON(ret);
 		loopvar = 10;
 		do {
-			ret = qbman_dq_entry_has_newtoken(p, dq_storage,
-							0xab + i);
+			ret = qbman_dq_entry_has_new_result(p, dq_storage);
 		} while (!ret && loopvar);
 		if (ret) {
 			for (j = 0; j < 8; j++)
@@ -361,7 +357,7 @@ int qbman_test(void)
 	int ret;
 
 	pd.idx = QBMAN_PORTAL_IDX;
-	
+
 	ret = qbman_swp_mmap(&portal_map);
 	if (ret) {
 		error(0, ret, "process_portal_map()");

@@ -242,7 +242,6 @@ void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint32_t cmd_verb)
 	BUG_ON((*v & cmd_verb) != *v);
 	*v = cmd_verb | p->mc.valid_bit;
 	qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR, cmd);
-	/* TODO: add prefetch support for GPP */
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_poll;
 #endif
@@ -254,6 +253,8 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 #ifdef QBMAN_CHECKING
 	BUG_ON(p->mc.check != swp_mc_can_poll);
 #endif
+	qbman_cena_invalidate_prefetch(&p->sys,
+				QBMAN_CENA_SWP_RR(p->mc.valid_bit));
 	ret = qbman_cena_read(&p->sys, QBMAN_CENA_SWP_RR(p->mc.valid_bit));
 	/* Remove the valid-bit - command completed iff the rest is non-zero */
 	verb = ret[0] & ~QB_VALID_BIT;

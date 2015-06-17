@@ -31,6 +31,7 @@
 #define QBMAN_BP_QUERY            0x32
 #define QBMAN_FQ_QUERY            0x44
 #define QBMAN_FQ_QUERY_NP         0x45
+#define QBMAN_WQ_QUERY            0x47
 #define QBMAN_CGR_QUERY           0x51
 #define QBMAN_WRED_QUERY          0x54
 #define QBMAN_CGR_STAT_QUERY      0x55
@@ -40,6 +41,7 @@ enum qbman_attr_usage_e {
 	qbman_attr_usage_fq,
 	qbman_attr_usage_bpool,
 	qbman_attr_usage_cgr,
+	qbman_attr_usage_wqchan
 };
 
 struct int_qbman_attr {
@@ -838,3 +840,91 @@ int qbman_cq_dequeue_statistics(struct qbman_swp *s, uint32_t cgid, int clear,
 	return qbman_cgr_statistics_query(s, cgid, clear, 0,
 					  frame_cnt, byte_cnt);
 }
+
+/* WQ Chan Query */
+static struct qb_attr_code code_wqchan_chanid = QB_CODE(0, 16, 16);
+static struct qb_attr_code code_wqchan_cdan_ctx_lo = QB_CODE(2, 0, 32);
+static struct qb_attr_code code_wqchan_cdan_ctx_hi = QB_CODE(3, 0, 32);
+static struct qb_attr_code code_wqchan_cdan_wqid = QB_CODE(1, 16, 16);
+static struct qb_attr_code code_wqchan_ctrl = QB_CODE(1, 8, 8);
+
+void qbman_wqchan_attr_clear(struct qbman_attr *a)
+{
+	memset(a, 0, sizeof(*a));
+	attr_type_set(a, qbman_attr_usage_wqchan);
+}
+
+int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
+		       struct qbman_attr *a)
+{
+	uint32_t *p;
+	uint32_t verb, rslt;
+	uint32_t *attr = ATTR32(a);
+
+	qbman_wqchan_attr_clear(a);
+
+	/* Start the management command */
+	p = qbman_swp_mc_start(s);
+	if (!p)
+		return -EBUSY;
+
+	/* Encode the caller-provided attributes */
+	qb_attr_code_encode(&code_wqchan_chanid, p, chanid);
+
+	/* Complete the management command */
+	p = qbman_swp_mc_complete(s, p, p[0] | QBMAN_WQ_QUERY);
+
+	/* Decode the outcome */
+	verb = qb_attr_code_decode(&code_generic_verb, p);
+	rslt = qb_attr_code_decode(&code_generic_rslt, p);
+	BUG_ON(verb != QBMAN_WQCHAN_QUERY);
+
+	/* Determine success or failure */
+	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {
+		pr_err("Query of WQCHAN 0x%x failed, code=0x%02x\n",
+		       chanid, rslt);
+		return -EIO;
+	}
+
+	/* For the query, word[0] of the result contains only the
+	 * verb/rslt fields, so skip word[0].
+	 */
+	word_copy(&attr[1], &p[1], 15);
+	return 0;
+}
+
+void qbman_wqchan_attr_get_wqlen(struct qbman_attr *attr, int wq, uint32_t *len)
+{
+	uint32_t *p = ATTR32(attr);
+	struct qb_attr_code code_wqchan_len = QB_CODE(wq+ 8, 0, 24);
+	*len = qb_attr_code_decode(&code_wqchan_len, p);
+}
+
+void qbman_wqchan_attr_get_cdan_ctx(struct qbman_attr *attr, uint64_t *cdan_ctx)
+{
+	uint32_t lo, hi;
+	uint32_t *p = ATTR32(attr);
+
+	lo = qb_attr_code_decode(&code_wqchan_cdan_ctx_lo, p);
+	hi = qb_attr_code_decode(&code_wqchan_cdan_ctx_hi, p);
+	*cdan_ctx = ((uint64_t)hi << 32) | (uint64_t)lo;
+}
+
+void qbman_wqchan_attr_get_cdan_wqid(struct qbman_attr *attr,
+				    uint16_t *cdan_wqid)
+{
+	uint32_t *p = ATTR32(attr);
+	*cdan_wqid = qb_attr_code_decode(&code_wqchan_cdan_wqid, p);
+}
+
+void qbman_wqchan_attr_get_ctrl(struct qbman_attr *attr, uint8_t *ctrl)
+{
+	uint32_t *p = ATTR32(attr);
+	*ctrl = qb_attr_code_decode(&code_wqchan_ctrl, p);
+}
+void qbman_wqchan_attr_get_chanid(struct qbman_attr *attr, uint16_t *chanid)
+{
+	uint32_t *p = ATTR32(attr);
+	*chanid = qb_attr_code_decode(&code_wqchan_chanid, p);
+}
+

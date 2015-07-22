@@ -420,6 +420,18 @@ int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
 	return 0;
 }
 
+/*************************/
+/* Static (push) dequeue */
+/*************************/
+
+void qbman_swp_push_get(struct qbman_swp *s, uint8_t channel_idx, int *enabled)
+{
+	struct qb_attr_code code = CODE_SDQCR_DQSRC(channel_idx);
+
+	BUG_ON(channel_idx > 15);
+	*enabled = (int)qb_attr_code_decode(&code, &s->sdq);
+}
+
 void qbman_swp_push_set(struct qbman_swp *s, uint8_t channel_idx, int enable)
 {
 	uint16_t dqsrc;

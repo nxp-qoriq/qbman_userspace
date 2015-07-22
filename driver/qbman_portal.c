@@ -278,7 +278,7 @@ static struct qb_attr_code code_eq_orp_nlis = QB_CODE(0, 30, 1);
 static struct qb_attr_code code_eq_orp_seqnum = QB_CODE(0, 16, 14);
 static struct qb_attr_code code_eq_orp_id = QB_CODE(1, 0, 16);
 static struct qb_attr_code code_eq_tgt_id = QB_CODE(2, 0, 24);
-static struct qb_attr_code code_eq_tag = QB_CODE(3, 0, 32);
+/* static struct qb_attr_code code_eq_tag = QB_CODE(3, 0, 32); */
 static struct qb_attr_code code_eq_qd_en = QB_CODE(0, 4, 1);
 static struct qb_attr_code code_eq_qd_bin = QB_CODE(4, 0, 16);
 static struct qb_attr_code code_eq_qd_pri = QB_CODE(4, 16, 4);
@@ -546,7 +546,7 @@ static struct qb_attr_code code_dqrr_response = QB_CODE(0, 0, 7);
 static struct qb_attr_code code_dqrr_stat = QB_CODE(0, 8, 8);
 static struct qb_attr_code code_dqrr_seqnum = QB_CODE(0, 16, 14);
 static struct qb_attr_code code_dqrr_odpid = QB_CODE(1, 0, 16);
-static struct qb_attr_code code_dqrr_tok = QB_CODE(1, 24, 8);
+/* static struct qb_attr_code code_dqrr_tok = QB_CODE(1, 24, 8); */
 static struct qb_attr_code code_dqrr_fqid = QB_CODE(2, 0, 24);
 static struct qb_attr_code code_dqrr_byte_count = QB_CODE(4, 0, 32);
 static struct qb_attr_code code_dqrr_frame_count = QB_CODE(5, 0, 24);
@@ -925,7 +925,7 @@ uint64_t qbman_result_cgcu_icnt(const struct qbman_result *scn)
 /******************/
 
 /* These should be const, eventually */
-static struct qb_attr_code code_release_num = QB_CODE(0, 0, 3);
+/* static struct qb_attr_code code_release_num = QB_CODE(0, 0, 3); */
 static struct qb_attr_code code_release_set_me = QB_CODE(0, 5, 1);
 static struct qb_attr_code code_release_rcdi = QB_CODE(0, 6, 1);
 static struct qb_attr_code code_release_bpid = QB_CODE(0, 16, 16);

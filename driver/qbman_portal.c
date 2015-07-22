@@ -1145,6 +1145,13 @@ int qbman_swp_CDAN_enable(struct qbman_swp *s, uint16_t channelid)
 				  1, 0);
 }
 
+int qbman_swp_CDAN_disable(struct qbman_swp *s, uint16_t channelid)
+{
+	return qbman_swp_CDAN_set(s, channelid,
+				  CODE_CDAN_WE_EN,
+				  0, 0);
+}
+
 int qbman_swp_CDAN_set_context_enable(struct qbman_swp *s, uint16_t channelid,
 				      uint64_t ctx)
 {

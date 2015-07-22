@@ -62,7 +62,7 @@ void qbman_swp_interrupt_set_inhibit(struct qbman_swp *, int inhibit);
 
 /* See the QBMan driver API documentation for details on the enqueue
  * mechanisms. */
-struct qbman_dq_entry {
+struct qbman_result {
 	uint32_t dont_manipulate_directly[16];
 };
 
@@ -115,7 +115,7 @@ void qbman_pull_desc_clear(struct qbman_pull_desc *);
  * the caller provides in 'storage_phys'), and 'stash' controls whether or not
  * those writes to main-memory express a cache-warming attribute. */
 void qbman_pull_desc_set_storage(struct qbman_pull_desc *,
-				 struct qbman_dq_entry *storage,
+				 struct qbman_result *storage,
 				 dma_addr_t storage_phys,
 				 int stash);
 /* numframes must be between 1 and 16, inclusive */
@@ -142,9 +142,9 @@ int qbman_swp_pull(struct qbman_swp *, struct qbman_pull_desc *);
 /* NULL return if there are no unconsumed DQRR entries. Returns a DQRR entry
  * only once, so repeated calls can return a sequence of DQRR entries, without
  * requiring they be consumed immediately or in any particular order. */
-const struct qbman_dq_entry *qbman_swp_dqrr_next(struct qbman_swp *);
+const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *);
 /* Consume DQRR entries previously returned from qbman_swp_dqrr_next(). */
-void qbman_swp_dqrr_consume(struct qbman_swp *, const struct qbman_dq_entry *);
+void qbman_swp_dqrr_consume(struct qbman_swp *, const struct qbman_result *);
 
 /* ------------------------------------------------- */
 /* Polling user-provided storage for dequeue results */
@@ -155,47 +155,47 @@ void qbman_swp_dqrr_consume(struct qbman_swp *, const struct qbman_dq_entry *);
  * conversion to ensure that the user's dequeue result storage is in host-endian
  * format (whether or not that is the same as the little-endian format that
  * hardware DMA'd to the user's storage). As such, once the user has called
- * qbman_dq_entry_has_new_result() and been returned a valid dequeue result,
+ * qbman_result_has_new_result() and been returned a valid dequeue result,
  * they should not call it again on the same memory location (except of course
  * if another dequeue command has been executed to produce a new result to that
  * location).
  */
-int qbman_dq_entry_has_new_result(struct qbman_swp *,
-				const struct qbman_dq_entry *);
+int qbman_result_has_new_result(struct qbman_swp *,
+				const struct qbman_result *);
 
 /* -------------------------------------------------------- */
 /* Parsing dequeue entries (DQRR and user-provided storage) */
 /* -------------------------------------------------------- */
 
 /* DQRR entries may contain non-dequeue results, ie. notifications */
-int qbman_dq_entry_is_DQ(const struct qbman_dq_entry *);
+int qbman_result_is_DQ(const struct qbman_result *);
 /* All the non-dequeue results (FQDAN/CDAN/CSCN/...) are "state change
  * notifications" of one type or another. Some APIs apply to all of them, of the
- * form qbman_dq_entry_SCN_***(). */
-static inline int qbman_dq_entry_is_SCN(const struct qbman_dq_entry *dq)
+ * form qbman_result_SCN_***(). */
+static inline int qbman_result_is_SCN(const struct qbman_result *dq)
 {
-	return !qbman_dq_entry_is_DQ(dq);
+	return !qbman_result_is_DQ(dq);
 }
 /* Recognise different notification types, only required if the user allows for
  * these to occur, and cares about them when they do. */
-int qbman_dq_entry_is_FQDAN(const struct qbman_dq_entry *);
+int qbman_result_is_FQDAN(const struct qbman_result *);
 				/* FQ Data Availability */
-int qbman_dq_entry_is_CDAN(const struct qbman_dq_entry *);
+int qbman_result_is_CDAN(const struct qbman_result *);
 				/* Channel Data Availability */
-int qbman_dq_entry_is_CSCN(const struct qbman_dq_entry *);
+int qbman_result_is_CSCN(const struct qbman_result *);
 				/* Congestion State Change */
-int qbman_dq_entry_is_BPSCN(const struct qbman_dq_entry *);
+int qbman_result_is_BPSCN(const struct qbman_result *);
 				/* Buffer Pool State Change */
-int qbman_dq_entry_is_CGCU(const struct qbman_dq_entry *);
+int qbman_result_is_CGCU(const struct qbman_result *);
 				/* Congestion Group Count Update */
 /* Frame queue state change notifications; (FQDAN in theory counts too as it
  * leaves a FQ parked, but it is primarily a data availability notification) */
-int qbman_dq_entry_is_FQRN(const struct qbman_dq_entry *); /* Retirement */
-int qbman_dq_entry_is_FQRNI(const struct qbman_dq_entry *);
+int qbman_result_is_FQRN(const struct qbman_result *); /* Retirement */
+int qbman_result_is_FQRNI(const struct qbman_result *);
 				/* Retirement Immediate */
-int qbman_dq_entry_is_FQPN(const struct qbman_dq_entry *); /* Park */
+int qbman_result_is_FQPN(const struct qbman_result *); /* Park */
 
-/* Parsing frame dequeue results (qbman_dq_entry_is_DQ() must be TRUE) */
+/* Parsing frame dequeue results (qbman_result_is_DQ() must be TRUE) */
 #define QBMAN_DQ_STAT_FQEMPTY       0x80
 #define QBMAN_DQ_STAT_HELDACTIVE    0x40
 #define QBMAN_DQ_STAT_FORCEELIGIBLE 0x20
@@ -203,39 +203,39 @@ int qbman_dq_entry_is_FQPN(const struct qbman_dq_entry *); /* Park */
 #define QBMAN_DQ_STAT_ODPVALID      0x04
 #define QBMAN_DQ_STAT_VOLATILE      0x02
 #define QBMAN_DQ_STAT_EXPIRED       0x01
-uint32_t qbman_dq_entry_DQ_flags(const struct qbman_dq_entry *);
-static inline int qbman_dq_entry_DQ_is_pull(const struct qbman_dq_entry *dq)
+uint32_t qbman_result_DQ_flags(const struct qbman_result *);
+static inline int qbman_result_DQ_is_pull(const struct qbman_result *dq)
 {
-	return (int)(qbman_dq_entry_DQ_flags(dq) & QBMAN_DQ_STAT_VOLATILE);
+	return (int)(qbman_result_DQ_flags(dq) & QBMAN_DQ_STAT_VOLATILE);
 }
-static inline int qbman_dq_entry_DQ_is_pull_complete(
-					const struct qbman_dq_entry *dq)
+static inline int qbman_result_DQ_is_pull_complete(
+					const struct qbman_result *dq)
 {
-	return (int)(qbman_dq_entry_DQ_flags(dq) & QBMAN_DQ_STAT_EXPIRED);
+	return (int)(qbman_result_DQ_flags(dq) & QBMAN_DQ_STAT_EXPIRED);
 }
 /* seqnum/odpid are valid only if VALIDFRAME and ODPVALID flags are TRUE */
-uint16_t qbman_dq_entry_DQ_seqnum(const struct qbman_dq_entry *);
-uint16_t qbman_dq_entry_DQ_odpid(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_DQ_fqid(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_DQ_byte_count(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_DQ_frame_count(const struct qbman_dq_entry *);
-uint64_t qbman_dq_entry_DQ_fqd_ctx(const struct qbman_dq_entry *);
-const struct qbman_fd *qbman_dq_entry_DQ_fd(const struct qbman_dq_entry *);
+uint16_t qbman_result_DQ_seqnum(const struct qbman_result *);
+uint16_t qbman_result_DQ_odpid(const struct qbman_result *);
+uint32_t qbman_result_DQ_fqid(const struct qbman_result *);
+uint32_t qbman_result_DQ_byte_count(const struct qbman_result *);
+uint32_t qbman_result_DQ_frame_count(const struct qbman_result *);
+uint64_t qbman_result_DQ_fqd_ctx(const struct qbman_result *);
+const struct qbman_fd *qbman_result_DQ_fd(const struct qbman_result *);
 							/* Frame Descriptor */
 /* State-change notifications (FQDAN/CDAN/CSCN/...). */
-uint8_t qbman_dq_entry_SCN_state(const struct qbman_dq_entry *);
-uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *);
-uint64_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *);
+uint8_t qbman_result_SCN_state(const struct qbman_result *);
+uint32_t qbman_result_SCN_rid(const struct qbman_result *);
+uint64_t qbman_result_SCN_ctx(const struct qbman_result *);
 /* Type-specific "resource IDs". Mainly for illustration purposes, though it
  * also gives the appropriate type widths. */
-#define qbman_dq_entry_FQDAN_fqid(dq) qbman_dq_entry_SCN_rid(dq)
-#define qbman_dq_entry_FQRN_fqid(dq) qbman_dq_entry_SCN_rid(dq)
-#define qbman_dq_entry_FQRNI_fqid(dq) qbman_dq_entry_SCN_rid(dq)
-#define qbman_dq_entry_FQPN_fqid(dq) qbman_dq_entry_SCN_rid(dq)
-#define qbman_dq_entry_CDAN_cid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
-#define qbman_dq_entry_CSCN_cgid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
-#define qbman_dq_entry_CGCU_cgid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
-#define qbman_dq_entry_BPSCN_bpid(dq) ((uint16_t)qbman_dq_entry_SCN_rid(dq))
+#define qbman_result_FQDAN_fqid(dq) qbman_result_SCN_rid(dq)
+#define qbman_result_FQRN_fqid(dq) qbman_result_SCN_rid(dq)
+#define qbman_result_FQRNI_fqid(dq) qbman_result_SCN_rid(dq)
+#define qbman_result_FQPN_fqid(dq) qbman_result_SCN_rid(dq)
+#define qbman_result_CDAN_cid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
+#define qbman_result_CSCN_cgid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
+#define qbman_result_CGCU_cgid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
+#define qbman_result_BPSCN_bpid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
 
 	/************/
 	/* Enqueues */
@@ -354,7 +354,7 @@ int qbman_swp_fq_schedule(struct qbman_swp *, uint32_t fqid);
  * and thus be available for selection by any channel-dequeuing behaviour (push
  * or pull). If the FQ is subsequently "dequeued" from the channel and is still
  * empty at the time this happens, the resulting dq_entry will have no FD.
- * (qbman_dq_entry_DQ_fd() will return NULL.) */
+ * (qbman_result_DQ_fd() will return NULL.) */
 int qbman_swp_fq_force(struct qbman_swp *, uint32_t fqid);
 
 /* These functions change the FQ flow-control stuff between XON/XOFF. (The
@@ -363,7 +363,7 @@ int qbman_swp_fq_force(struct qbman_swp *, uint32_t fqid);
  * non-empty, meaning they won't be selected for scheduled dequeuing. If a FQ is
  * changed to XOFF after it had already become truly-scheduled to a channel, and
  * a pull dequeue of that channel occurs that selects that FQ for dequeuing,
- * then the resulting dq_entry will have no FD. (qbman_dq_entry_DQ_fd() will
+ * then the resulting dq_entry will have no FD. (qbman_result_DQ_fd() will
  * return NULL.) */
 int qbman_swp_fq_xon(struct qbman_swp *, uint32_t fqid);
 int qbman_swp_fq_xoff(struct qbman_swp *, uint32_t fqid);

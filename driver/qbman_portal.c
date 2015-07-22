@@ -461,7 +461,7 @@ void qbman_pull_desc_clear(struct qbman_pull_desc *d)
 }
 
 void qbman_pull_desc_set_storage(struct qbman_pull_desc *d,
-				 struct qbman_dq_entry *storage,
+				 struct qbman_result *storage,
 				 dma_addr_t storage_phys,
 				 int stash)
 {
@@ -552,27 +552,27 @@ static struct qb_attr_code code_dqrr_byte_count = QB_CODE(4, 0, 32);
 static struct qb_attr_code code_dqrr_frame_count = QB_CODE(5, 0, 24);
 static struct qb_attr_code code_dqrr_ctx_lo = QB_CODE(6, 0, 32);
 
-#define QBMAN_DQRR_RESPONSE_DQ        0x60
-#define QBMAN_DQRR_RESPONSE_FQRN      0x21
-#define QBMAN_DQRR_RESPONSE_FQRNI     0x22
-#define QBMAN_DQRR_RESPONSE_FQPN      0x24
-#define QBMAN_DQRR_RESPONSE_FQDAN     0x25
-#define QBMAN_DQRR_RESPONSE_CDAN      0x26
-#define QBMAN_DQRR_RESPONSE_CSCN_MEM  0x27
-#define QBMAN_DQRR_RESPONSE_CGCU      0x28
-#define QBMAN_DQRR_RESPONSE_BPSCN     0x29
-#define QBMAN_DQRR_RESPONSE_CSCN_WQ   0x2a
+#define QBMAN_RESULT_DQ        0x60
+#define QBMAN_RESULT_FQRN      0x21
+#define QBMAN_RESULT_FQRNI     0x22
+#define QBMAN_RESULT_FQPN      0x24
+#define QBMAN_RESULT_FQDAN     0x25
+#define QBMAN_RESULT_CDAN      0x26
+#define QBMAN_RESULT_CSCN_MEM  0x27
+#define QBMAN_RESULT_CGCU      0x28
+#define QBMAN_RESULT_BPSCN     0x29
+#define QBMAN_RESULT_CSCN_WQ   0x2a
 
 static struct qb_attr_code code_dqpi_pi = QB_CODE(0, 0, 4);
 
 /* NULL return if there are no unconsumed DQRR entries. Returns a DQRR entry
  * only once, so repeated calls can return a sequence of DQRR entries, without
  * requiring they be consumed immediately or in any particular order. */
-const struct qbman_dq_entry *qbman_swp_dqrr_next(struct qbman_swp *s)
+const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 {
 	uint32_t verb;
 	uint32_t response_verb;
-	const struct qbman_dq_entry *dq;
+	const struct qbman_result *dq;
 	const uint32_t *p;
 
 	/* Before using valid-bit to detect if something is there, we have to
@@ -633,9 +633,9 @@ const struct qbman_dq_entry *qbman_swp_dqrr_next(struct qbman_swp *s)
 	/* VDQCR "no longer busy" hook - if VDQCR shows "busy" and this is a
 	 * VDQCR result, mark it as non-busy. */
 	if (s->vdq.busy) {
-		uint32_t flags = qbman_dq_entry_DQ_flags(dq);
+		uint32_t flags = qbman_result_DQ_flags(dq);
 		response_verb = qb_attr_code_decode(&code_dqrr_response, &verb);
-		if ((response_verb == QBMAN_DQRR_RESPONSE_DQ) &&
+		if ((response_verb == QBMAN_RESULT_DQ) &&
 				(flags & QBMAN_DQ_STAT_VOLATILE))
 			s->vdq.busy = 0;
 	}
@@ -646,7 +646,7 @@ const struct qbman_dq_entry *qbman_swp_dqrr_next(struct qbman_swp *s)
 
 /* Consume DQRR entries previously returned from qbman_swp_dqrr_next(). */
 void qbman_swp_dqrr_consume(struct qbman_swp *s,
-					const struct qbman_dq_entry *dq)
+					const struct qbman_result *dq)
 {
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_DCAP, QBMAN_IDX_FROM_DQRR(dq));
 }
@@ -655,8 +655,8 @@ void qbman_swp_dqrr_consume(struct qbman_swp *s,
 /* Polling user-provided storage */
 /*********************************/
 
-int qbman_dq_entry_has_new_result(struct qbman_swp *s,
-				  const struct qbman_dq_entry *dq)
+int qbman_result_has_new_result(struct qbman_swp *s,
+				  const struct qbman_result *dq)
 {
 	/* To avoid converting the little-endian DQ entry to host-endian prior
 	 * to us knowing whether there is a valid entry or not (and run the
@@ -670,7 +670,7 @@ int qbman_dq_entry_has_new_result(struct qbman_swp *s,
 	 * however the same address that was provided to us non-const in the
 	 * first place, for directing hardware DMA to. So we can cast away the
 	 * const because it is mutable from our perspective. */
-	uint32_t *p = qb_cl((struct qbman_dq_entry *)dq);
+	uint32_t *p = qb_cl((struct qbman_result *)dq);
 	uint32_t token;
 
 	token = qb_attr_code_decode(&code_dqrr_tok_detect, &p[1]);
@@ -697,7 +697,7 @@ int qbman_dq_entry_has_new_result(struct qbman_swp *s,
 /* Categorising dequeue entries */
 /********************************/
 
-static inline int __qbman_dq_entry_is_x(const struct qbman_dq_entry *dq,
+static inline int __qbman_result_is_x(const struct qbman_result *dq,
 					uint32_t x)
 {
 	const uint32_t *p = qb_cl(dq);
@@ -705,102 +705,102 @@ static inline int __qbman_dq_entry_is_x(const struct qbman_dq_entry *dq,
 	return (response_verb == x);
 }
 
-int qbman_dq_entry_is_DQ(const struct qbman_dq_entry *dq)
+int qbman_result_is_DQ(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_DQ);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_DQ);
 }
 
-int qbman_dq_entry_is_FQDAN(const struct qbman_dq_entry *dq)
+int qbman_result_is_FQDAN(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_FQDAN);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_FQDAN);
 }
 
-int qbman_dq_entry_is_CDAN(const struct qbman_dq_entry *dq)
+int qbman_result_is_CDAN(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_CDAN);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_CDAN);
 }
 
-int qbman_dq_entry_is_CSCN(const struct qbman_dq_entry *dq)
+int qbman_result_is_CSCN(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_CSCN_MEM) ||
-		__qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_CSCN_WQ);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_CSCN_MEM) ||
+		__qbman_result_is_x(dq, QBMAN_RESULT_CSCN_WQ);
 }
 
-int qbman_dq_entry_is_BPSCN(const struct qbman_dq_entry *dq)
+int qbman_result_is_BPSCN(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_BPSCN);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_BPSCN);
 }
 
-int qbman_dq_entry_is_CGCU(const struct qbman_dq_entry *dq)
+int qbman_result_is_CGCU(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_CGCU);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_CGCU);
 }
 
-int qbman_dq_entry_is_FQRN(const struct qbman_dq_entry *dq)
+int qbman_result_is_FQRN(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_FQRN);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_FQRN);
 }
 
-int qbman_dq_entry_is_FQRNI(const struct qbman_dq_entry *dq)
+int qbman_result_is_FQRNI(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_FQRNI);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_FQRNI);
 }
 
-int qbman_dq_entry_is_FQPN(const struct qbman_dq_entry *dq)
+int qbman_result_is_FQPN(const struct qbman_result *dq)
 {
-	return __qbman_dq_entry_is_x(dq, QBMAN_DQRR_RESPONSE_FQPN);
+	return __qbman_result_is_x(dq, QBMAN_RESULT_FQPN);
 }
 
 /*********************************/
 /* Parsing frame dequeue results */
 /*********************************/
 
-/* These APIs assume qbman_dq_entry_is_DQ() is TRUE */
+/* These APIs assume qbman_result_is_DQ() is TRUE */
 
-uint32_t qbman_dq_entry_DQ_flags(const struct qbman_dq_entry *dq)
+uint32_t qbman_result_DQ_flags(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return qb_attr_code_decode(&code_dqrr_stat, p);
 }
 
-uint16_t qbman_dq_entry_DQ_seqnum(const struct qbman_dq_entry *dq)
+uint16_t qbman_result_DQ_seqnum(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return (uint16_t)qb_attr_code_decode(&code_dqrr_seqnum, p);
 }
 
-uint16_t qbman_dq_entry_DQ_odpid(const struct qbman_dq_entry *dq)
+uint16_t qbman_result_DQ_odpid(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return (uint16_t)qb_attr_code_decode(&code_dqrr_odpid, p);
 }
 
-uint32_t qbman_dq_entry_DQ_fqid(const struct qbman_dq_entry *dq)
+uint32_t qbman_result_DQ_fqid(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return qb_attr_code_decode(&code_dqrr_fqid, p);
 }
 
-uint32_t qbman_dq_entry_DQ_byte_count(const struct qbman_dq_entry *dq)
+uint32_t qbman_result_DQ_byte_count(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return qb_attr_code_decode(&code_dqrr_byte_count, p);
 }
 
-uint32_t qbman_dq_entry_DQ_frame_count(const struct qbman_dq_entry *dq)
+uint32_t qbman_result_DQ_frame_count(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return qb_attr_code_decode(&code_dqrr_frame_count, p);
 }
 
-uint64_t qbman_dq_entry_DQ_fqd_ctx(const struct qbman_dq_entry *dq)
+uint64_t qbman_result_DQ_fqd_ctx(const struct qbman_result *dq)
 {
 	const uint64_t *p = (uint64_t *)qb_cl(dq);
 
 	return qb_attr_code_decode_64(&code_dqrr_ctx_lo, p);
 }
 
-const struct qbman_fd *qbman_dq_entry_DQ_fd(const struct qbman_dq_entry *dq)
+const struct qbman_fd *qbman_result_DQ_fd(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return (const struct qbman_fd *)&p[8];
@@ -814,19 +814,19 @@ static struct qb_attr_code code_scn_state = QB_CODE(0, 16, 8);
 static struct qb_attr_code code_scn_rid = QB_CODE(1, 0, 24);
 static struct qb_attr_code code_scn_ctx_lo = QB_CODE(2, 0, 32);
 
-uint8_t qbman_dq_entry_SCN_state(const struct qbman_dq_entry *dq)
+uint8_t qbman_result_SCN_state(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return (uint8_t)qb_attr_code_decode(&code_scn_state, p);
 }
 
-uint32_t qbman_dq_entry_SCN_rid(const struct qbman_dq_entry *dq)
+uint32_t qbman_result_SCN_rid(const struct qbman_result *dq)
 {
 	const uint32_t *p = qb_cl(dq);
 	return qb_attr_code_decode(&code_scn_rid, p);
 }
 
-uint64_t qbman_dq_entry_SCN_ctx(const struct qbman_dq_entry *dq)
+uint64_t qbman_result_SCN_ctx(const struct qbman_result *dq)
 {
 	const uint64_t *p = (uint64_t *)qb_cl(dq);
 

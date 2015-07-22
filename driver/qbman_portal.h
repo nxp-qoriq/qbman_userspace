@@ -82,7 +82,7 @@ struct qbman_swp {
 		 * targetting DQRR or main-memory, and detected is based on the
 		 * presence of the dequeue command's "token" showing up in
 		 * dequeue entries in DQRR or main-memory (respectively). */
-		struct qbman_dq_entry *storage; /* NULL if DQRR */
+		struct qbman_result *storage; /* NULL if DQRR */
 	} vdq;
 	/* DQRR */
 	struct {

@@ -120,7 +120,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	qb_attr_code_encode(&code_sdqcr_dct, &p->sdq, qbman_sdqcr_dct_prio_ics);
 	qb_attr_code_encode(&code_sdqcr_fc, &p->sdq, qbman_sdqcr_fc_up_to_3);
 	qb_attr_code_encode(&code_sdqcr_tok, &p->sdq, 0xbb);
-	p->vdq.busy = 0; /* TODO: convert to atomic_t */
+	atomic_set(&p->vdq.busy, 1);
 	p->vdq.valid_bit = QB_VALID_BIT;
 	p->dqrr.next_idx = 0;
 	p->dqrr.valid_bit = QB_VALID_BIT;
@@ -522,10 +522,10 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 {
 	uint32_t *p;
 	uint32_t *cl = qb_cl(d);
-	/* TODO: convert to atomic_t */
-	if (s->vdq.busy)
+	if (!atomic_dec_and_test(&s->vdq.busy)) {
+		atomic_inc(&s->vdq.busy);
 		return -EBUSY;
-	s->vdq.busy = 1;
+	}
 	s->vdq.storage = *(void **)&cl[4];
 	qb_attr_code_encode(&code_pull_token, cl, 1);
 	p = qbman_cena_write_start(&s->sys, QBMAN_CENA_SWP_VDQCR);
@@ -632,12 +632,12 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		s->dqrr.valid_bit ^= QB_VALID_BIT;
 	/* VDQCR "no longer busy" hook - if VDQCR shows "busy" and this is a
 	 * VDQCR result, mark it as non-busy. */
-	if (s->vdq.busy) {
+	if (!atomic_read(&s->vdq.busy)) {
 		uint32_t flags = qbman_result_DQ_flags(dq);
 		response_verb = qb_attr_code_decode(&code_dqrr_response, &verb);
 		if ((response_verb == QBMAN_RESULT_DQ) &&
 				(flags & QBMAN_DQ_STAT_VOLATILE))
-			s->vdq.busy = 0;
+			atomic_inc(&s->vdq.busy);
 	}
 	qbman_cena_invalidate_prefetch(&s->sys,
 				       QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
@@ -688,8 +688,8 @@ int qbman_result_has_new_result(struct qbman_swp *s,
 	 * makes it available. Eg. we may be looking at our 10th dequeue result,
 	 * having released VDQCR after the 1st result and it is now busy due to
 	 * some other command! */
-	if (s->vdq.busy && (s->vdq.storage == dq))
-		s->vdq.busy = 0;
+	if (!atomic_read(&s->vdq.busy) && (s->vdq.storage == dq))
+		atomic_inc(&s->vdq.busy);
 	return 1;
 }
 

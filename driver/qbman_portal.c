@@ -572,6 +572,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 {
 	uint32_t verb;
 	uint32_t response_verb;
+	uint32_t flags;
 	const struct qbman_result *dq;
 	const uint32_t *p;
 
@@ -630,15 +631,15 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 	 * later. */
 	if (!s->dqrr.next_idx)
 		s->dqrr.valid_bit ^= QB_VALID_BIT;
-	/* VDQCR "no longer busy" hook - if VDQCR shows "busy" and this is a
-	 * VDQCR result, mark it as non-busy. */
-	if (!atomic_read(&s->vdq.busy)) {
-		uint32_t flags = qbman_result_DQ_flags(dq);
-		response_verb = qb_attr_code_decode(&code_dqrr_response, &verb);
-		if ((response_verb == QBMAN_RESULT_DQ) &&
-				(flags & QBMAN_DQ_STAT_VOLATILE))
+	/* If this is the final response to a volatile dequeue command
+	  indicate that the vdq is no longer busy */
+	flags = qbman_result_DQ_flags(dq);
+	response_verb = qb_attr_code_decode(&code_dqrr_response, &verb);
+	if ((response_verb == QBMAN_RESULT_DQ) &&
+		(flags & QBMAN_DQ_STAT_VOLATILE) &&
+		(flags & QBMAN_DQ_STAT_EXPIRED))
 			atomic_inc(&s->vdq.busy);
-	}
+
 	qbman_cena_invalidate_prefetch(&s->sys,
 				       QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 	return dq;
@@ -688,8 +689,10 @@ int qbman_result_has_new_result(struct qbman_swp *s,
 	 * makes it available. Eg. we may be looking at our 10th dequeue result,
 	 * having released VDQCR after the 1st result and it is now busy due to
 	 * some other command! */
-	if (!atomic_read(&s->vdq.busy) && (s->vdq.storage == dq))
+	if (s->vdq.storage == dq) {
+		s->vdq.storage = NULL;
 		atomic_inc(&s->vdq.busy);
+	}
 	return 1;
 }
 

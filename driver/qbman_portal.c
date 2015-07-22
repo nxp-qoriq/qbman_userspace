@@ -694,14 +694,26 @@ int qbman_result_has_new_result(struct qbman_swp *s,
 }
 
 /********************************/
-/* Categorising dequeue entries */
+/* Categorising qbman results   */
 /********************************/
+
+static struct qb_attr_code code_result_in_mem =
+			QB_CODE(0, QBMAN_RESULT_VERB_OFFSET_IN_MEM, 7);
 
 static inline int __qbman_result_is_x(const struct qbman_result *dq,
 					uint32_t x)
 {
 	const uint32_t *p = qb_cl(dq);
 	uint32_t response_verb = qb_attr_code_decode(&code_dqrr_response, p);
+	return (response_verb == x);
+}
+
+static inline int __qbman_result_is_x_in_mem(const struct qbman_result *dq,
+					     uint32_t x)
+{
+	const uint32_t *p = qb_cl(dq);
+	uint32_t response_verb = qb_attr_code_decode(&code_result_in_mem, p);
+
 	return (response_verb == x);
 }
 
@@ -722,28 +734,28 @@ int qbman_result_is_CDAN(const struct qbman_result *dq)
 
 int qbman_result_is_CSCN(const struct qbman_result *dq)
 {
-	return __qbman_result_is_x(dq, QBMAN_RESULT_CSCN_MEM) ||
+	return __qbman_result_is_x_in_mem(dq, QBMAN_RESULT_CSCN_MEM) ||
 		__qbman_result_is_x(dq, QBMAN_RESULT_CSCN_WQ);
 }
 
 int qbman_result_is_BPSCN(const struct qbman_result *dq)
 {
-	return __qbman_result_is_x(dq, QBMAN_RESULT_BPSCN);
+	return __qbman_result_is_x_in_mem(dq, QBMAN_RESULT_BPSCN);
 }
 
 int qbman_result_is_CGCU(const struct qbman_result *dq)
 {
-	return __qbman_result_is_x(dq, QBMAN_RESULT_CGCU);
+	return __qbman_result_is_x_in_mem(dq, QBMAN_RESULT_CGCU);
 }
 
 int qbman_result_is_FQRN(const struct qbman_result *dq)
 {
-	return __qbman_result_is_x(dq, QBMAN_RESULT_FQRN);
+	return __qbman_result_is_x_in_mem(dq, QBMAN_RESULT_FQRN);
 }
 
 int qbman_result_is_FQRNI(const struct qbman_result *dq)
 {
-	return __qbman_result_is_x(dq, QBMAN_RESULT_FQRNI);
+	return __qbman_result_is_x_in_mem(dq, QBMAN_RESULT_FQRNI);
 }
 
 int qbman_result_is_FQPN(const struct qbman_result *dq)
@@ -812,25 +824,100 @@ const struct qbman_fd *qbman_result_DQ_fd(const struct qbman_result *dq)
 
 static struct qb_attr_code code_scn_state = QB_CODE(0, 16, 8);
 static struct qb_attr_code code_scn_rid = QB_CODE(1, 0, 24);
+static struct qb_attr_code code_scn_state_in_mem =
+			QB_CODE(0, SCN_STATE_OFFSET_IN_MEM, 8);
+static struct qb_attr_code code_scn_rid_in_mem =
+			QB_CODE(1, SCN_RID_OFFSET_IN_MEM, 24);
 static struct qb_attr_code code_scn_ctx_lo = QB_CODE(2, 0, 32);
 
-uint8_t qbman_result_SCN_state(const struct qbman_result *dq)
+uint8_t qbman_result_SCN_state(const struct qbman_result *scn)
 {
-	const uint32_t *p = qb_cl(dq);
+	const uint32_t *p = qb_cl(scn);
 	return (uint8_t)qb_attr_code_decode(&code_scn_state, p);
 }
 
-uint32_t qbman_result_SCN_rid(const struct qbman_result *dq)
+uint32_t qbman_result_SCN_rid(const struct qbman_result *scn)
 {
-	const uint32_t *p = qb_cl(dq);
+	const uint32_t *p = qb_cl(scn);
 	return qb_attr_code_decode(&code_scn_rid, p);
 }
 
-uint64_t qbman_result_SCN_ctx(const struct qbman_result *dq)
+uint64_t qbman_result_SCN_ctx(const struct qbman_result *scn)
 {
-	const uint64_t *p = (uint64_t *)qb_cl(dq);
+	const uint64_t *p = (uint64_t *)qb_cl(scn);
 
 	return qb_attr_code_decode_64(&code_scn_ctx_lo, p);
+}
+
+uint8_t qbman_result_SCN_state_in_mem(const struct qbman_result *scn)
+{
+	const uint32_t *p = qb_cl(scn);
+
+	return (uint8_t)qb_attr_code_decode(&code_scn_state_in_mem, p);
+}
+
+uint32_t qbman_result_SCN_rid_in_mem(const struct qbman_result *scn)
+{
+	const uint32_t *p = qb_cl(scn);
+	uint32_t result_rid;
+
+	result_rid = qb_attr_code_decode(&code_scn_rid_in_mem, p);
+	return make_le24(result_rid);
+}
+
+/*****************/
+/* Parsing BPSCN */
+/*****************/
+uint16_t qbman_result_bpscn_bpid(const struct qbman_result *scn)
+{
+	return (uint16_t)qbman_result_SCN_rid_in_mem(scn) & 0x3FFF;
+}
+
+int qbman_result_bpscn_has_free_bufs(const struct qbman_result *scn)
+{
+	return !(int)(qbman_result_SCN_state_in_mem(scn) & 0x1);
+}
+
+int qbman_result_bpscn_is_depleted(const struct qbman_result *scn)
+{
+	return (int)(qbman_result_SCN_state_in_mem(scn) & 0x2);
+}
+
+int qbman_result_bpscn_is_surplus(const struct qbman_result *scn)
+{
+	return (int)(qbman_result_SCN_state_in_mem(scn) & 0x4);
+}
+
+uint64_t qbman_result_bpscn_ctx(const struct qbman_result *scn)
+{
+	uint64_t ctx;
+	uint32_t ctx_hi, ctx_lo;
+
+	ctx = qbman_result_SCN_ctx(scn);
+	ctx_hi = upper32(ctx);
+	ctx_lo = lower32(ctx);
+	return ((uint64_t)make_le32(ctx_hi) << 32 |
+		(uint64_t)make_le32(ctx_lo));
+}
+
+/*****************/
+/* Parsing CGCU  */
+/*****************/
+uint16_t qbman_result_cgcu_cgid(const struct qbman_result *scn)
+{
+	return (uint16_t)qbman_result_SCN_rid_in_mem(scn) & 0xFFFF;
+}
+
+uint64_t qbman_result_cgcu_icnt(const struct qbman_result *scn)
+{
+	uint64_t ctx;
+	uint32_t ctx_hi, ctx_lo;
+
+	ctx = qbman_result_SCN_ctx(scn);
+	ctx_hi = upper32(ctx);
+	ctx_lo = lower32(ctx);
+	return ((uint64_t)(make_le32(ctx_hi) & 0xFF) << 32) |
+		(uint64_t)make_le32(ctx_lo);
 }
 
 /******************/

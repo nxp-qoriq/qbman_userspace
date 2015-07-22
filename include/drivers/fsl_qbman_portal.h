@@ -226,6 +226,8 @@ const struct qbman_fd *qbman_result_DQ_fd(const struct qbman_result *);
 uint8_t qbman_result_SCN_state(const struct qbman_result *);
 uint32_t qbman_result_SCN_rid(const struct qbman_result *);
 uint64_t qbman_result_SCN_ctx(const struct qbman_result *);
+uint8_t qbman_result_SCN_state_in_mem(const struct qbman_result *);
+uint32_t qbman_result_SCN_rid_in_mem(const struct qbman_result *);
 /* Type-specific "resource IDs". Mainly for illustration purposes, though it
  * also gives the appropriate type widths. */
 #define qbman_result_FQDAN_fqid(dq) qbman_result_SCN_rid(dq)
@@ -234,8 +236,26 @@ uint64_t qbman_result_SCN_ctx(const struct qbman_result *);
 #define qbman_result_FQPN_fqid(dq) qbman_result_SCN_rid(dq)
 #define qbman_result_CDAN_cid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
 #define qbman_result_CSCN_cgid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
-#define qbman_result_CGCU_cgid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
-#define qbman_result_BPSCN_bpid(dq) ((uint16_t)qbman_result_SCN_rid(dq))
+
+/* Parsing BPSCN */
+uint16_t qbman_result_bpscn_bpid(const struct qbman_result *);
+/* Check BPSCN to see whether there are free buffers in the pool.
+ */
+int qbman_result_bpscn_has_free_bufs(const struct qbman_result *);
+/* Check BPSCN to see whether the buffer pool is depleted.
+ */
+int qbman_result_bpscn_is_depleted(const struct qbman_result *);
+/* Check BPSCN to see whether the buffer pool is surplus or not.
+ */
+int qbman_result_bpscn_is_surplus(const struct qbman_result *);
+/* Get the BPSCN CTX from BPSCN message */
+uint64_t qbman_result_bpscn_ctx(const struct qbman_result *);
+
+/* Parsing CGCU */
+/* Check CGCU resouce id, i.e. cgid */
+uint16_t qbman_result_cgcu_cgid(const struct qbman_result *);
+/* Get the I_CNT from CGCU */
+uint64_t qbman_result_cgcu_icnt(const struct qbman_result *);
 
 	/************/
 	/* Enqueues */

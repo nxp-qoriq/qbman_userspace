@@ -72,17 +72,15 @@ struct qbman_swp {
 		 * to whether or not a command can be submitted, not whether or
 		 * not a previously-submitted command is still executing. In
 		 * other words, once proof is seen that the previously-submitted
-		 * command is executing, "vdq" is no longer "busy". TODO:
-		 * convert this to "atomic_t" so that it is thread-safe (without
-		 * locking). */
-		int busy;
+		 * command is executing, "vdq" is no longer "busy". */
+		atomic_t busy;
 		uint32_t valid_bit; /* 0x00 or 0x80 */
 		/* We need to determine when vdq is no longer busy. This depends
 		 * on whether the "busy" (last-submitted) dequeue command is
 		 * targetting DQRR or main-memory, and detected is based on the
 		 * presence of the dequeue command's "token" showing up in
 		 * dequeue entries in DQRR or main-memory (respectively). */
-		struct qbman_dq_entry *storage; /* NULL if DQRR */
+		struct qbman_result *storage; /* NULL if DQRR */
 	} vdq;
 	/* DQRR */
 	struct {

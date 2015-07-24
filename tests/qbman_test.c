@@ -217,7 +217,7 @@ static void do_enqueue(struct qbman_swp *p)
 static void do_push_dequeue(struct qbman_swp *p)
 {
 	int i, j;
-	const struct qbman_dq_entry *dq_storage1;
+	const struct qbman_result *dq_storage1;
 	const struct qbman_fd *__fd;
 	int loopvar = 10;
 
@@ -227,7 +227,7 @@ static void do_push_dequeue(struct qbman_swp *p)
 			dq_storage1 = qbman_swp_dqrr_next(p);
 		} while (!dq_storage1 && loopvar);
 		if (dq_storage1) {
-			__fd = qbman_dq_entry_DQ_fd(dq_storage1);
+			__fd = qbman_result_DQ_fd(dq_storage1);
 			for (j = 0; j < 8; j++)
 				fd_dq[i].words[j] = __fd->words[j];
 			if (fd_cmp(&fd_eq[i], &fd_dq[i]))
@@ -243,9 +243,9 @@ static void do_push_dequeue(struct qbman_swp *p)
 static void do_pull_dequeue(struct qbman_swp *p)
 {
 	int i, j, ret;
-	struct qbman_dq_entry *dq_storage;
+	struct qbman_result *dq_storage;
 	dma_addr_t dq_storage_phys;
-	const struct qbman_dq_entry *dq_storage1;
+	const struct qbman_result *dq_storage1;
 	const struct qbman_fd *__fd;
 	int loopvar = 10;
 
@@ -264,7 +264,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 			dq_storage1 = qbman_swp_dqrr_next(p);
 		} while (!dq_storage1 && loopvar);
 		if (dq_storage1) {
-			__fd = qbman_dq_entry_DQ_fd(dq_storage1);
+			__fd = qbman_result_DQ_fd(dq_storage1);
 			for (j = 0; j < 8; j++)
 				fd_dq[i].words[j] = __fd->words[j];
 			if (fd_cmp(&fd_eq[i], &fd_dq[i]))
@@ -279,10 +279,10 @@ static void do_pull_dequeue(struct qbman_swp *p)
 	pr_info("*****QBMan_test: Dequeue %d frames from FQ %d,"
 					" write dq entry in memory\n",
 					NUM_DQ_IN_MEM, QBMAN_TEST_FQID);
-	dq_storage = (struct qbman_dq_entry *)mem_map.ptr;
+	dq_storage = (struct qbman_result *)mem_map.ptr;
 	for (i = 0; i < NUM_DQ_IN_MEM; i++) {
 		dq_storage_phys = (dma_addr_t)(mem_map.phys_addr +
-				 i * sizeof(struct qbman_dq_entry));
+				 i * sizeof(struct qbman_result));
 		qbman_pull_desc_clear(&pulldesc);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 						dq_storage_phys, 0);
@@ -292,7 +292,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		BUG_ON(ret);
 		loopvar = 10;
 		do {
-			ret = qbman_dq_entry_has_new_result(p, dq_storage);
+			ret = qbman_result_has_new_result(p, dq_storage);
 		} while (!ret && loopvar);
 		if (ret) {
 			for (j = 0; j < 8; j++)

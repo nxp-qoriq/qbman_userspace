@@ -511,4 +511,87 @@ static inline u64 div64_u64(u64 n, u64 d)
 	return n / d;
 }
 
+#define dmb(opt) { asm volatile("dmb " #opt : : : "memory"); }
+#define smp_mb() dmb(ish)
+
+/* Atomic stuff */
+typedef struct {
+	int counter;
+} atomic_t;
+
+#define atomic_read(v)  (*(volatile int *)&(v)->counter)
+#define atomic_set(v, i) (((v)->counter) = (i))
+static inline void atomic_add(int i, atomic_t *v)
+{
+	unsigned long tmp;
+	int result;
+
+	asm volatile("// atomic_add\n"
+	"1:	ldxr    %w0, %2\n"
+	"	add     %w0, %w0, %w3\n"
+	"	stxr    %w1, %w0, %2\n"
+	"	cbnz    %w1, 1b"
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)
+	: "Ir" (i));
+}
+
+static inline int atomic_add_return(int i, atomic_t *v)
+{
+	unsigned long tmp;
+	int result;
+
+	asm volatile("// atomic_add_return\n"
+	"1:	ldxr    %w0, %2\n"
+	"	add     %w0, %w0, %w3\n"
+	"	stlxr   %w1, %w0, %2\n"
+	"	cbnz    %w1, 1b"
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)
+	: "Ir" (i)
+	: "memory");
+
+	smp_mb();
+	return result;
+}
+
+static inline void atomic_sub(int i, atomic_t *v)
+{
+	unsigned long tmp;
+	int result;
+
+	asm volatile("// atomic_sub\n"
+	"1:	ldxr    %w0, %2\n"
+	"	sub     %w0, %w0, %w3\n"
+	"	stxr    %w1, %w0, %2\n"
+	"	cbnz    %w1, 1b"
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)
+	: "Ir" (i));
+}
+
+static inline int atomic_sub_return(int i, atomic_t *v)
+{
+	unsigned long tmp;
+	int result;
+
+	asm volatile("// atomic_sub_return\n"
+	"1:	ldxr    %w0, %2\n"
+	"	sub     %w0, %w0, %w3\n"
+	"	stlxr   %w1, %w0, %2\n"
+	"	cbnz    %w1, 1b"
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)
+	: "Ir" (i)
+	: "memory");
+
+	smp_mb();
+	return result;
+}
+
+#define atomic_inc(v)           atomic_add(1, v)
+#define atomic_dec(v)           atomic_sub(1, v)
+
+#define atomic_inc_and_test(v)  (atomic_add_return(1, v) == 0)
+#define atomic_dec_and_test(v)  (atomic_sub_return(1, v) == 0)
+#define atomic_inc_return(v)    (atomic_add_return(1, v))
+#define atomic_dec_return(v)    (atomic_sub_return(1, v))
+#define atomic_sub_and_test(i, v) (atomic_sub_return(i, v) == 0)
+
 #endif /* HEADER_COMPAT_H */

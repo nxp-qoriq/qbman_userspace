@@ -238,7 +238,7 @@ static inline void qbman_cena_invalidate_prefetch(struct qbman_swp_sys *s,
  * SP is (SWP_CFG,4,1) - memory stashing priority (<- TRUE)
  * SE is (SWP_CFG,3,1) - memory stashing enable (<- TRUE)
  * DP is (SWP_CFG,2,1) - dequeue stashing priority (<- TRUE)
- * DE is (SWP_CFG,1,1) - dequeue stashing enable (<- TRUE)
+ * DE is (SWP_CFG,1,1) - dequeue stashing enable (<- FALSE)
  * EP is (SWP_CFG,0,1) - EQCR_CI stashing priority (<- FALSE)
  */
 static inline uint32_t qbman_set_swp_cfg(uint8_t max_fill, uint8_t wn,
@@ -277,7 +277,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	BUG_ON(reg);
 #endif
-	reg = qbman_set_swp_cfg(4, 0, 0, 3, 2, 3, 0, 1, 1, 1, 1, 0);
+	reg = qbman_set_swp_cfg(4, 0, 0, 3, 2, 3, 0, 1, 1, 1, 0, 0);
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {

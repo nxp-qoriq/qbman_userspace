@@ -877,7 +877,7 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 	/* Decode the outcome */
 	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
-	BUG_ON(verb != QBMAN_WQCHAN_QUERY);
+	BUG_ON(verb != QBMAN_WQ_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {

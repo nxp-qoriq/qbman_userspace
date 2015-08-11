@@ -408,13 +408,14 @@ int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
 	pr_debug("EQAR=%08x\n", eqar);
 	if (!EQAR_SUCCESS(eqar))
 		return -EBUSY;
-	p = qbman_cena_write_start(&s->sys,
+	p = qbman_cena_write_start_wo_shadow(&s->sys,
 				   QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
 	word_copy(&p[1], &cl[1], 7);
 	word_copy(&p[8], fd, sizeof(*fd) >> 2);
 	/* Set the verb byte, have to substitute in the valid-bit */
+	lwsync();
 	p[0] = cl[0] | EQAR_VB(eqar);
-	qbman_cena_write_complete(&s->sys,
+	qbman_cena_write_complete_wo_shadow(&s->sys,
 				  QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)),
 				  p);
 	return 0;
@@ -540,12 +541,13 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 	}
 	s->vdq.storage = *(void **)&cl[4];
 	qb_attr_code_encode(&code_pull_token, cl, 1);
-	p = qbman_cena_write_start(&s->sys, QBMAN_CENA_SWP_VDQCR);
+	p = qbman_cena_write_start_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
 	word_copy(&p[1], &cl[1], 3);
 	/* Set the verb byte, have to substitute in the valid-bit */
+	lwsync();
 	p[0] = cl[0] | s->vdq.valid_bit;
 	s->vdq.valid_bit ^= QB_VALID_BIT;
-	qbman_cena_write_complete(&s->sys, QBMAN_CENA_SWP_VDQCR, p);
+	qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR, p);
 	return 0;
 }
 
@@ -980,14 +982,15 @@ int qbman_swp_release(struct qbman_swp *s, const struct qbman_release_desc *d,
 		return -EBUSY;
 	BUG_ON(!num_buffers || (num_buffers > 7));
 	/* Start the release command */
-	p = qbman_cena_write_start(&s->sys,
+	p = qbman_cena_write_start_wo_shadow(&s->sys,
 				   QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
 	/* Copy the caller's buffer pointers to the command */
 	u64_to_le32_copy(&p[2], buffers, num_buffers);
 	/* Set the verb byte, have to substitute in the valid-bit and the number
 	 * of buffers. */
+	lwsync();
 	p[0] = cl[0] | RAR_VB(rar) | num_buffers;
-	qbman_cena_write_complete(&s->sys,
+	qbman_cena_write_complete_wo_shadow(&s->sys,
 				  QBMAN_CENA_SWP_RCR(RAR_IDX(rar)),
 				  p);
 	return 0;

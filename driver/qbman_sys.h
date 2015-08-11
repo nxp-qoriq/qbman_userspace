@@ -176,6 +176,17 @@ static inline void *qbman_cena_write_start(struct qbman_swp_sys *s,
 	return shadow;
 }
 
+static inline void *qbman_cena_write_start_wo_shadow(struct qbman_swp_sys *s,
+						uint32_t offset)
+{
+#ifdef QBMAN_CENA_TRACE
+	pr_info("qbman_cena_write_start(%p:%d:0x%03x)\n",
+		s->addr_cena, s->idx, offset);
+#endif
+	BUG_ON(offset & 63);
+	return (s->addr_cena + offset);
+}
+
 static inline void qbman_cena_write_complete(struct qbman_swp_sys *s,
 						uint32_t offset, void *cmd)
 {
@@ -191,7 +202,18 @@ static inline void qbman_cena_write_complete(struct qbman_swp_sys *s,
 					 offset + loop * 4);
 	lwsync();
 		__raw_writel(shadow[0], s->addr_cena + offset);
-	dccivac(s->addr_cena + offset);
+	dcbf(s->addr_cena + offset);
+}
+
+static inline void qbman_cena_write_complete_wo_shadow(struct qbman_swp_sys *s,
+						uint32_t offset, void *cmd)
+{
+#ifdef QBMAN_CENA_TRACE
+	pr_info("qbman_cena_write_complete(%p:%d:0x%03x)\n",
+		s->addr_cena, s->idx, offset);
+	hexdump(cmd, 64);
+#endif
+	dcbf(s->addr_cena + offset);
 }
 
 static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)

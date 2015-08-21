@@ -1177,3 +1177,15 @@ int qbman_swp_CDAN_set_context_enable(struct qbman_swp *s, uint16_t channelid,
 				  CODE_CDAN_WE_EN | CODE_CDAN_WE_CTX,
 				  1, ctx);
 }
+
+uint8_t qbman_get_dqrr_idx(struct qbman_result *dqrr)
+{
+	return QBMAN_IDX_FROM_DQRR(dqrr);
+}
+
+struct qbman_result *qbman_get_dqrr_from_idx(struct qbman_swp *s, uint8_t idx)
+{
+	struct qbman_result *dq;
+	dq = qbman_cena_read(&s->sys, QBMAN_CENA_SWP_DQRR(idx));
+	return dq;
+}

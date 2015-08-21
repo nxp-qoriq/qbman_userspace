@@ -146,6 +146,11 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *);
 /* Consume DQRR entries previously returned from qbman_swp_dqrr_next(). */
 void qbman_swp_dqrr_consume(struct qbman_swp *, const struct qbman_result *);
 
+/* Get dqrr index from the given dqrr */
+uint8_t qbman_get_dqrr_idx(struct qbman_result *dqrr);
+/* Get the dqrr entry from the given portal and index */
+struct qbman_result *qbman_get_dqrr_from_idx(struct qbman_swp *s, uint8_t idx);
+
 /* ------------------------------------------------- */
 /* Polling user-provided storage for dequeue results */
 /* ------------------------------------------------- */

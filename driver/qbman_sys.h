@@ -234,6 +234,12 @@ static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)
 	return shadow;
 }
 
+static inline void qbman_cena_invalidate(struct qbman_swp_sys *s,
+						  uint32_t offset)
+{
+	dccivac(s->addr_cena + offset);
+}
+
 static inline void qbman_cena_invalidate_prefetch(struct qbman_swp_sys *s,
 						  uint32_t offset)
 {

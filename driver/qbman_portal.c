@@ -49,7 +49,7 @@
 #define QBMAN_CENA_SWP_VDQCR   0x780
 
 /* Reverse mapping of QBMAN_CENA_SWP_DQRR() */
-#define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0xff) >> 6)
+#define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0x1ff) >> 6)
 
 /* QBMan FQ management command codes */
 #define QBMAN_FQ_SCHEDULE	0x48
@@ -124,13 +124,18 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	p->vdq.valid_bit = QB_VALID_BIT;
 	p->dqrr.next_idx = 0;
 	p->dqrr.valid_bit = QB_VALID_BIT;
+	qman_version = p->desc->qman_version;
+	if ((qman_version & 0xFFFF0000) < QMAN_REV_4100)
+		p->dqrr.dqrr_size = 4;
+	else
+		p->dqrr.dqrr_size = 8;
 	/* TODO: should also read PI/CI type registers and check that they're on
 	 * PoR values. If we're asked to initialise portals that aren't in reset
 	 * state, bad things will follow. */
 #ifdef WORKAROUND_DQRR_RESET_BUG
 	p->dqrr.reset_bug = 1;
 #endif
-	ret = qbman_swp_sys_init(&p->sys, d);
+	ret = qbman_swp_sys_init(&p->sys, d, p->dqrr.dqrr_size);
 	if (ret) {
 		kfree(p);
 		pr_err("qbman_swp_sys_init() failed %d\n", ret);
@@ -613,7 +618,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		 * (which increments one at a time), rather than on pi (which
 		 * can burst and wrap-around between our snapshots of it).
 		 */
-		if (s->dqrr.next_idx == (QBMAN_DQRR_SIZE - 1)) {
+		if (s->dqrr.next_idx == (s->dqrr.dqrr_size - 1)) {
 			pr_debug("DEBUG: next_idx=%d, pi=%d, clear reset bug\n",
 				s->dqrr.next_idx, pi);
 			s->dqrr.reset_bug = 0;
@@ -643,7 +648,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 	/* There's something there. Move "next_idx" attention to the next ring
 	 * entry (and prefetch it) before returning what we found. */
 	s->dqrr.next_idx++;
-	s->dqrr.next_idx &= QBMAN_DQRR_SIZE - 1; /* Wrap around at 4 */
+	s->dqrr.next_idx &= s->dqrr.dqrr_size - 1;/* Wrap around at dqrr_size */
 	/* TODO: it's possible to do all this without conditionals, optimise it
 	 * later. */
 	if (!s->dqrr.next_idx)

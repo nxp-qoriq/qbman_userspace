@@ -47,6 +47,7 @@ struct qbman_swp_desc {
 	void *cinh_bar; /* Cache-inhibited portal register map */
 	int irq; /* -1 if unused (or unassigned) */
 	int idx; /* SWPs within a QBMan are indexed. -1 if opaque to the user */
+	uint32_t qman_version;
 };
 
 /* Driver object for managing a QBMan portal */

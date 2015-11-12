@@ -25,35 +25,73 @@
 #ifndef _FSL_QBMAN_BASE_H
 #define _FSL_QBMAN_BASE_H
 
-/* Descriptor for a QBMan instance on the SoC. On partitions/targets that do not
+/**
+ * DOC: QBMan basic structures
+ *
+ * The QBMan block descriptor, software portal descriptor and Frame descriptor
+ * are defined here.
+ *
+ */
+
+/**
+ * struct qbman_block_desc - qbman block descriptor structure
+ * @ccsr_reg_bar: CCSR register map.
+ * @irq_rerr: Recoverable error interrupt line.
+ * @irq_nrerr: Non-recoverable error interrupt line
+ *
+ * Descriptor for a QBMan instance on the SoC. On partitions/targets that do not
  * control this QBMan instance, these values may simply be place-holders. The
  * idea is simply that we be able to distinguish between them, eg. so that SWP
- * descriptors can identify which QBMan instance they belong to. */
+ * descriptors can identify which QBMan instance they belong to.
+ */
 struct qbman_block_desc {
-	void *ccsr_reg_bar; /* CCSR register map */
-	int irq_rerr;  /* Recoverable error interrupt line */
-	int irq_nrerr; /* Non-recoverable error interrupt line */
+	void *ccsr_reg_bar;
+	int irq_rerr;
+	int irq_nrerr;
 };
 
-/* Descriptor for a QBMan software portal, expressed in terms that make sense to
+/**
+ * struct qbman_swp_desc - qbman software portal descriptor structure
+ * @block: The QBMan instance.
+ * @cena_bar: Cache-enabled portal register map.
+ * @cinh_bar: Cache-inhibited portal register map.
+ * @irq: -1 if unused (or unassigned)
+ * @idx: SWPs within a QBMan are indexed. -1 if opaque to the user.
+ * @qman_version: the qman version.
+ *
+ * Descriptor for a QBMan software portal, expressed in terms that make sense to
  * the user context. Ie. on MC, this information is likely to be true-physical,
  * and instantiated statically at compile-time. On GPP, this information is
  * likely to be obtained via "discovery" over a partition's "layerscape bus"
  * (ie. in response to a MC portal command), and would take into account any
- * virtualisation of the GPP user's address space and/or interrupt numbering. */
+ * virtualisation of the GPP user's address space and/or interrupt numbering.
+ */
 struct qbman_swp_desc {
-	const struct qbman_block_desc *block; /* The QBMan instance */
-	void *cena_bar; /* Cache-enabled portal register map */
-	void *cinh_bar; /* Cache-inhibited portal register map */
-	int irq; /* -1 if unused (or unassigned) */
-	int idx; /* SWPs within a QBMan are indexed. -1 if opaque to the user */
+	const struct qbman_block_desc *block;
+	void *cena_bar;
+	void *cinh_bar;
+	int irq;
+	int idx;
 	uint32_t qman_version;
 };
 
 /* Driver object for managing a QBMan portal */
 struct qbman_swp;
 
-/* Place-holder for FDs, we represent it via the simplest form that we need for
+/**
+ * struct qbman_fd - basci structure for qbman frame descriptor
+ * @words: for easier/faster copying the whole FD structure.
+ * @addr_lo: the lower 32 bits of the address in FD.
+ * @addr_hi: the upper 32 bits of the address in FD.
+ * @len: the length field in FD.
+ * @bpid_offset: represent the bpid and offset fields in FD. offset in
+ * the MS 16 bits, BPID in the LS 16 bits.
+ * @frc: frame context
+ * @ctrl: the 32bit control bits including dd, sc,... va, err.
+ * @flc_lo: the lower 32bit of flow context.
+ * @flc_hi: the upper 32bits of flow context.
+ *
+ * Place-holder for FDs, we represent it via the simplest form that we need for
  * now. Different overlays may be needed to support different options, etc. (It
  * is impractical to define One True Struct, because the resulting encoding
  * routines (lots of read-modify-writes) would be worst-case performance whether
@@ -93,12 +131,9 @@ struct qbman_fd {
 			uint32_t addr_lo;
 			uint32_t addr_hi;
 			uint32_t len;
-			/* offset in the MS 16 bits, BPID in the LS 16 bits */
 			uint32_t bpid_offset;
-			uint32_t frc; /* frame context */
-			/* "err", "va", "cbmt", "asal", [...] */
+			uint32_t frc;
 			uint32_t ctrl;
-			/* flow context */
 			uint32_t flc_lo;
 			uint32_t flc_hi;
 		} simple;

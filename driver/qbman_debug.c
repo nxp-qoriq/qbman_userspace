@@ -746,7 +746,7 @@ void qbman_cgr_attr_wred_dp_decompose(uint32_t dp, uint64_t *minth,
 	step_s = (uint8_t)(dp >> 6) & 0x1f;
 	pn = (uint8_t)dp & 0x3f;
 
-	*maxp = ((pn<<2) * 100)/256;
+	*maxp = (uint8_t)(((pn<<2) * 100)/256);
 
 	if (mn == 0)
 		*maxth = ma;
@@ -914,17 +914,17 @@ void qbman_wqchan_attr_get_cdan_wqid(struct qbman_attr *attr,
 				    uint16_t *cdan_wqid)
 {
 	uint32_t *p = ATTR32(attr);
-	*cdan_wqid = qb_attr_code_decode(&code_wqchan_cdan_wqid, p);
+	*cdan_wqid = (uint16_t)qb_attr_code_decode(&code_wqchan_cdan_wqid, p);
 }
 
 void qbman_wqchan_attr_get_ctrl(struct qbman_attr *attr, uint8_t *ctrl)
 {
 	uint32_t *p = ATTR32(attr);
-	*ctrl = qb_attr_code_decode(&code_wqchan_ctrl, p);
+	*ctrl = (uint8_t)qb_attr_code_decode(&code_wqchan_ctrl, p);
 }
 void qbman_wqchan_attr_get_chanid(struct qbman_attr *attr, uint16_t *chanid)
 {
 	uint32_t *p = ATTR32(attr);
-	*chanid = qb_attr_code_decode(&code_wqchan_chanid, p);
+	*chanid = (uint16_t)qb_attr_code_decode(&code_wqchan_chanid, p);
 }
 

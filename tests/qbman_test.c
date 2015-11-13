@@ -225,7 +225,7 @@ static void do_push_dequeue(struct qbman_swp *p)
 	for (i = 0; i < NUM_DQ_FRAME; i++) {
 		do {
 			dq_storage1 = qbman_swp_dqrr_next(p);
-		} while (!dq_storage1 && loopvar);
+		} while (!dq_storage1 && loopvar--);
 		if (dq_storage1) {
 			__fd = qbman_result_DQ_fd(dq_storage1);
 			for (j = 0; j < 8; j++)
@@ -262,7 +262,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		BUG_ON(ret);
 		do {
 			dq_storage1 = qbman_swp_dqrr_next(p);
-		} while (!dq_storage1 && loopvar);
+		} while (!dq_storage1 && loopvar--);
 		if (dq_storage1) {
 			__fd = qbman_result_DQ_fd(dq_storage1);
 			for (j = 0; j < 8; j++)
@@ -293,7 +293,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		loopvar = 10;
 		do {
 			ret = qbman_result_has_new_result(p, dq_storage);
-		} while (!ret && loopvar);
+		} while (!ret && loopvar--);
 		if (ret) {
 			for (j = 0; j < 8; j++)
 				fd_dq[i + NUM_DQ_IN_DQRR].words[j] =

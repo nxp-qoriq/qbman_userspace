@@ -241,6 +241,20 @@ static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)
 	return shadow;
 }
 
+static inline void *qbman_cena_read_wo_shadow(struct qbman_swp_sys *s,
+					      uint32_t offset)
+{
+#ifdef QBMAN_CENA_TRACE
+	pr_info("qbman_cena_read(%p:%d:0x%03x) %p\n",
+		s->addr_cena, s->idx, offset, shadow);
+#endif
+
+#ifdef QBMAN_CENA_TRACE
+	hexdump(shadow, 64);
+#endif
+	return s->addr_cena + offset;
+}
+
 static inline void qbman_cena_invalidate(struct qbman_swp_sys *s,
 						  uint32_t offset)
 {
@@ -322,10 +336,10 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 #endif
 	if (s->eqcr_mode == qman_eqcr_vb_array)
 		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 0, 1, 1, 1,
-					0, 0);
+					1, 0);
 	else
 		reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 0, 1, 1, 1,
-					0, 0);
+					1, 0);
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {

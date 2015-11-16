@@ -680,10 +680,8 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		qbman_cena_invalidate_prefetch(&s->sys,
 				QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 	}
-	/* Invalidate dqrr entry because the dqrr stashing is disabled for now.
-	 */
-	qbman_cena_invalidate(&s->sys, QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
-	dq = qbman_cena_read(&s->sys, QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+	dq = qbman_cena_read_wo_shadow(&s->sys,
+					QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 	p = qb_cl(dq);
 	verb = qb_attr_code_decode(&code_dqrr_verb, p);
 	/* If the valid-bit isn't of the expected polarity, nothing there. Note,
@@ -693,19 +691,16 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 	 * valid-bit behaviour is repaired and should tell us what we already
 	 * knew from reading PI.
 	 */
-	if ((verb & QB_VALID_BIT) != s->dqrr.valid_bit) {
-		qbman_cena_invalidate_prefetch(&s->sys,
-					QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+	if ((verb & QB_VALID_BIT) != s->dqrr.valid_bit)
 		return NULL;
-	}
+
 	/* There's something there. Move "next_idx" attention to the next ring
 	 * entry (and prefetch it) before returning what we found. */
 	s->dqrr.next_idx++;
-	s->dqrr.next_idx &= s->dqrr.dqrr_size - 1;/* Wrap around at dqrr_size */
-	/* TODO: it's possible to do all this without conditionals, optimise it
-	 * later. */
-	if (!s->dqrr.next_idx)
+	if (s->dqrr.next_idx == QBMAN_DQRR_SIZE) {
+		s->dqrr.next_idx = 0;
 		s->dqrr.valid_bit ^= QB_VALID_BIT;
+	}
 	/* If this is the final response to a volatile dequeue command
 	  indicate that the vdq is no longer busy */
 	flags = qbman_result_DQ_flags(dq);
@@ -715,8 +710,6 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		(flags & QBMAN_DQ_STAT_EXPIRED))
 			atomic_inc(&s->vdq.busy);
 
-	qbman_cena_invalidate_prefetch(&s->sys,
-				       QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 	return dq;
 }
 

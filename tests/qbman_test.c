@@ -27,6 +27,13 @@
 #include <drivers/fsl_qbman_base.h>
 #include <drivers/fsl_qbman_portal.h>
 #include <sys/ioctl.h>
+#include "../driver/qbman_debug.h"
+#include "../driver/qbman_private.h"
+
+
+#define EQ_DQ_CYCLE_TEST
+/* Define this while testing VDQ to memory in cycle test */
+#define VDQ_TO_MEM
 
 #define QBMAN_TEST_MAGIC 'q'
 struct qbman_test_swp_ioctl {
@@ -41,11 +48,11 @@ struct qbman_test_dma_ioctl {
 #define QBMAN_TEST_SWP_MAP \
 	_IOR(QBMAN_TEST_MAGIC, 0x01, struct qbman_test_swp_ioctl)
 #define QBMAN_TEST_SWP_UNMAP \
-        _IOR(QBMAN_TEST_MAGIC, 0x02, struct qbman_test_swp_ioctl)
+	_IOR(QBMAN_TEST_MAGIC, 0x02, struct qbman_test_swp_ioctl)
 #define QBMAN_TEST_DMA_MAP \
-        _IOR(QBMAN_TEST_MAGIC, 0x03, struct qbman_test_dma_ioctl)
+	_IOR(QBMAN_TEST_MAGIC, 0x03, struct qbman_test_dma_ioctl)
 #define QBMAN_TEST_DMA_UNMAP \
-        _IOR(QBMAN_TEST_MAGIC, 0x04, struct qbman_test_dma_ioctl)
+	_IOR(QBMAN_TEST_MAGIC, 0x04, struct qbman_test_dma_ioctl)
 
 static int filep = -1;
 static struct qbman_test_swp_ioctl portal_map;
@@ -66,12 +73,12 @@ int qbman_swp_mmap(struct qbman_test_swp_ioctl *params)
 	int ret = check_fd();
 	if (ret)
 		return ret;
-        ret = ioctl(filep, QBMAN_TEST_SWP_MAP, params);
-        if (ret) {
-                perror("ioctl(QBMAN_TEST_SWP_MAP)");
-                return ret;
-        }
-        return 0;
+	ret = ioctl(filep, QBMAN_TEST_SWP_MAP, params);
+	if (ret) {
+		perror("ioctl(QBMAN_TEST_SWP_MAP)");
+		return ret;
+	}
+	return 0;
 }
 
 int qbman_swp_munmap(struct qbman_test_swp_ioctl *params)
@@ -79,25 +86,24 @@ int qbman_swp_munmap(struct qbman_test_swp_ioctl *params)
 	int ret = check_fd();
 	if (ret)
 		return ret;
-        ret = ioctl(filep, QBMAN_TEST_SWP_UNMAP, params);
-        if (ret) {
-                perror("ioctl(QBMAN_TEST_SWP_UNMAP)");
-                return ret;
-        }
-        return 0;
+	ret = ioctl(filep, QBMAN_TEST_SWP_UNMAP, params);
+	if (ret) {
+		perror("ioctl(QBMAN_TEST_SWP_UNMAP)");
+		return ret;
+	}
+	return 0;
 }
-
 int qbman_dma_mmap(struct qbman_test_dma_ioctl *params)
 {
 	int ret = check_fd();
 	if (ret)
 		return ret;
-        ret = ioctl(filep, QBMAN_TEST_DMA_MAP, params);
-        if (ret) {
-                perror("ioctl(QBMAN_TEST_DMA_UNMAP)");
-                return ret;
-        }
-        return 0;
+	ret = ioctl(filep, QBMAN_TEST_DMA_MAP, params);
+	if (ret) {
+		perror("ioctl(QBMAN_TEST_DMA_UNMAP)");
+		return ret;
+	}
+	return 0;
 }
 
 int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
@@ -105,12 +111,12 @@ int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
 	int ret = check_fd();
 	if (ret)
 		return ret;
-        ret = ioctl(filep, QBMAN_TEST_DMA_UNMAP, params);
-        if (ret) {
-                perror("ioctl(QBMAN_TEST_DMA_UNMAP)");
-                return ret;
-        }
-        return 0;
+	ret = ioctl(filep, QBMAN_TEST_DMA_UNMAP, params);
+	if (ret) {
+		perror("ioctl(QBMAN_TEST_DMA_UNMAP)");
+		return ret;
+	}
+	return 0;
 }
 
 #define QBMAN_PORTAL_IDX 3
@@ -126,6 +132,8 @@ int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
 #define NUM_DQ_FRAME 10
 #define NUM_DQ_IN_DQRR 5
 #define NUM_DQ_IN_MEM   (NUM_DQ_FRAME - NUM_DQ_IN_DQRR)
+
+#define QBMAN_EQ_DQ_CYCLE_TEST
 
 static struct qbman_swp *swp;
 static struct qbman_eq_desc eqdesc;
@@ -191,8 +199,7 @@ static void do_enqueue(struct qbman_swp *p)
 		/* Prepare a enqueue descriptor */
 		/*********************************/
 		qbman_eq_desc_clear(&eqdesc);
-		qbman_eq_desc_set_no_orp(&eqdesc, 1);
-		qbman_eq_desc_set_response(&eqdesc, eq_storage_phys, 0);
+		qbman_eq_desc_set_no_orp(&eqdesc, 0);
 		qbman_eq_desc_set_token(&eqdesc, 0x89);
 #ifdef QBMAN_USE_QD
 		/**********************************/
@@ -206,8 +213,11 @@ static void do_enqueue(struct qbman_swp *p)
 		/******************/
 		/* Try an enqueue */
 		/******************/
-		ret = qbman_swp_enqueue(p, &eqdesc, (const struct qbman_fd *)&fd);
-		BUG_ON(ret);
+		do {
+			ret = qbman_swp_enqueue(p, &eqdesc,
+					(const struct qbman_fd *)&fd);
+		} while (ret);
+
 		for (j = 0; j < 8; j++)
 			fd_eq[i].words[j] = *((uint32_t *)&fd + j);
 		fd_inc(&fd);
@@ -306,6 +316,150 @@ static void do_pull_dequeue(struct qbman_swp *p)
 	}
 }
 
+#ifdef EQ_DQ_CYCLE_TEST
+static inline uint64_t read_cntvct(void)
+{
+	uint64_t ret;
+	uint64_t ret_new, timeout = 200;
+
+	asm volatile ("mrs %0, cntvct_el0" : "=r" (ret));
+	asm volatile ("mrs %0, cntvct_el0" : "=r" (ret_new));
+	while (ret != ret_new && timeout--) {
+		ret = ret_new;
+		asm volatile ("mrs %0, cntvct_el0" : "=r" (ret_new));
+	}
+	BUG_ON(!timeout && (ret != ret_new));
+	return ret;
+}
+
+#define NUM_EQ_DQ_FRAME        10000
+#define NUM_IN_PULL    16
+static void do_enqueue_dequeue(struct qbman_swp *p)
+{
+	int i, j, ret;
+	uint32_t start, end, count;
+	uint32_t eq_jam = 0;
+	struct qbman_result *dq_storage;
+	dma_addr_t dq_storage_phys;
+	int is_last;
+	struct qbman_attr state;
+#ifndef VDQ_TO_MEM
+	uint8_t dqrr_idx;
+	const struct qbman_fd *__fd;
+#endif
+
+	pr_info("*****QBMan_test: Test enqueue dequeue cycles with %d frames\n",
+			NUM_EQ_DQ_FRAME);
+
+	start = read_cntvct();
+	usleep(50000);
+	end = read_cntvct();
+	pr_info("It takes %d cycles to sleep 50ms\n", (end - start) * 64);
+	for (i = 0; i < 16; i++) {
+		/*********************************/
+		/* Prepare a enqueue descriptor */
+		/*********************************/
+		qbman_eq_desc_clear(&eqdesc);
+		qbman_eq_desc_set_no_orp(&eqdesc, 0);
+		qbman_eq_desc_set_fq(&eqdesc, QBMAN_TEST_FQID);
+		do {
+			ret = qbman_swp_enqueue(p, &eqdesc,
+				(const struct qbman_fd *)&fd);
+		} while (ret);
+	}
+
+	qbman_fq_query_state(p, QBMAN_TEST_FQID, &state);
+	pr_info("QBMan_test: there are %d frames enqueued in the queue\n",
+				qbman_fq_state_frame_count(&state));
+
+#ifdef VDQ_TO_MEM
+	pr_info("QBMan_test: using dq to memory with 16 frames at each pull\n");
+	dq_storage = (struct qbman_result *)mem_map.ptr;
+	count = 0;
+	start = read_cntvct();
+	for (i = 0; i < NUM_EQ_DQ_FRAME/NUM_IN_PULL; i++) {
+		j = (i *NUM_IN_PULL) & 0x3f;
+		dq_storage_phys = (dma_addr_t)(mem_map.phys_addr +
+				 j * sizeof(struct qbman_result));
+		qbman_pull_desc_clear(&pulldesc);
+		qbman_pull_desc_set_storage(&pulldesc, &dq_storage[j],
+					dq_storage_phys, 1);
+		qbman_pull_desc_set_numframes(&pulldesc, NUM_IN_PULL);
+		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
+		ret = qbman_swp_pull(p, &pulldesc);
+		BUG_ON(ret);
+		do {
+			ret = qbman_result_has_new_result(p, &dq_storage[j]);
+		} while (!ret);
+		is_last = 0;
+		while (!is_last) {
+			if (qbman_result_DQ_is_pull_complete(&(dq_storage[j])))
+				is_last = 1;
+			if (qbman_result_DQ_flags(&dq_storage[j]) &
+					QBMAN_DQ_STAT_VALIDFRAME) {
+				/*********************************/
+				/* Prepare a enqueue descriptor */
+				/*********************************/
+				qbman_eq_desc_clear(&eqdesc);
+				qbman_eq_desc_set_no_orp(&eqdesc, 0);
+				qbman_eq_desc_set_fq(&eqdesc, QBMAN_TEST_FQID);
+retry:                          ret = qbman_swp_enqueue(p, &eqdesc,
+						(const struct qbman_fd *)&fd);
+				if (ret) {
+					eq_jam++;
+					goto retry;
+				}
+			j++;
+			}
+		};
+	}
+#else
+	pr_info("QBMan_test: using static dequeue\n");
+	qbman_swp_push_set(swp, 1, 1);
+	qbman_swp_fq_schedule(swp, QBMAN_TEST_FQID);
+	count = 0;
+	start = read_cntvct();
+	for (i = 0; i < NUM_EQ_DQ_FRAME; i++) {
+		do {
+			dq_storage = qbman_swp_dqrr_next(p);
+		} while (!dq_storage);
+
+		if (dq_storage) {
+			if (qbman_result_DQ_flags(dq_storage) &
+					QBMAN_DQ_STAT_VALIDFRAME) {
+				__fd = qbman_result_DQ_fd(dq_storage);
+				dqrr_idx = qbman_get_dqrr_idx(dq_storage);
+				/*********************************/
+				/* Prepare a enqueue descriptor */
+				/*********************************/
+				qbman_eq_desc_clear(&eqdesc);
+				qbman_eq_desc_set_no_orp(&eqdesc, 0);
+				qbman_eq_desc_set_dca(&eqdesc, 1, dqrr_idx, 1);
+				qbman_eq_desc_set_fq(&eqdesc, QBMAN_TEST_FQID);
+retry:				ret = qbman_swp_enqueue(p, &eqdesc,
+						(const struct qbman_fd *)&fd);
+				if (ret) {
+					eq_jam++;
+					goto retry;
+				}
+			}
+		} else {
+			pr_info("The push dequeue %d fails\n", i);
+		}
+	}
+#endif
+	end = read_cntvct();
+	count = end - start;
+	pr_info("QBMan_test: The num of eq+dq cycle is %d, eq_jam is %d\n",
+			(count / NUM_EQ_DQ_FRAME) * 64, eq_jam);
+
+	qbman_fq_query_state(p, QBMAN_TEST_FQID, &state);
+	pr_info("QBMan_test there are %d frames enqueued in the queue\n",
+			qbman_fq_state_frame_count(&state));
+
+}
+#endif
+
 static void release_buffer(struct qbman_swp *p)
 {
 	int ret;
@@ -326,7 +480,6 @@ static void acquire_buffer(struct qbman_swp *p)
 	ret = qbman_swp_acquire(p, QBMAN_TEST_BPID, &abufs[0], 2);
 	BUG_ON(ret != 2);
 }
-
 
 static void ceetm_test(struct qbman_swp *p)
 {
@@ -364,6 +517,8 @@ int qbman_test(void)
 	pd.cena_bar = (void *)portal_map.portal1_cena;
 	pd.cinh_bar = (void *)portal_map.portal1_cinh;
 	pd.irq = -1;
+	/* Set eqcr_mode to array mode if needed */
+	/* pd.eqcr_mode = qman_eqcr_vb_array; */
 
 	/* Detect whether the mc image is the test image with GPP setup */
 	reg = __raw_readl(pd.cena_bar + 0x4);
@@ -386,6 +541,9 @@ int qbman_test(void)
 		return ret;
 	}
 
+#ifdef EQ_DQ_CYCLE_TEST
+	do_enqueue_dequeue(swp);
+#else
 	/*******************/
 	/* Enqueue frames  */
 	/*******************/
@@ -422,6 +580,7 @@ int qbman_test(void)
 	/* CEETM test     */
 	/******************/
 	ceetm_test(swp);
+#endif
 
 	qbman_swp_munmap(&portal_map);
 	qbman_dma_munmap(&mem_map);

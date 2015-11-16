@@ -81,8 +81,8 @@ static struct qb_attr_code code_bp_state = QB_CODE(1, 24, 3);
 static struct qb_attr_code code_bp_fill = QB_CODE(2 , 0, 32);
 static struct qb_attr_code code_bp_hdptr = QB_CODE(3, 0, 32);
 static struct qb_attr_code code_bp_sdcnt = QB_CODE(13, 0, 8);
-static struct qb_attr_code code_bp_hdcnt = QB_CODE(13, 1, 8);
-static struct qb_attr_code code_bp_sscnt = QB_CODE(13, 2, 8);
+static struct qb_attr_code code_bp_hdcnt = QB_CODE(13, 8, 8);
+static struct qb_attr_code code_bp_sscnt = QB_CODE(13, 16, 8);
 
 void qbman_bp_attr_clear(struct qbman_attr *a)
 {

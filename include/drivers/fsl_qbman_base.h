@@ -50,6 +50,11 @@ struct qbman_block_desc {
 	int irq_nrerr;
 };
 
+enum qbman_eqcr_mode {
+	qman_eqcr_vb_ring = 2, /* Valid bit, with eqcr in ring mode */
+	qman_eqcr_vb_array, /* Valid bit, with eqcr in array mode */
+};
+
 /**
  * struct qbman_swp_desc - qbman software portal descriptor structure
  * @block: The QBMan instance.
@@ -58,6 +63,8 @@ struct qbman_block_desc {
  * @irq: -1 if unused (or unassigned)
  * @idx: SWPs within a QBMan are indexed. -1 if opaque to the user.
  * @qman_version: the qman version.
+ * @eqcr_mode: Select the eqcr mode, currently only valid bit ring mode and
+ * valid bit array mode are supported.
  *
  * Descriptor for a QBMan software portal, expressed in terms that make sense to
  * the user context. Ie. on MC, this information is likely to be true-physical,
@@ -73,6 +80,7 @@ struct qbman_swp_desc {
 	int irq;
 	int idx;
 	uint32_t qman_version;
+	enum qbman_eqcr_mode eqcr_mode;
 };
 
 /* Driver object for managing a QBMan portal */

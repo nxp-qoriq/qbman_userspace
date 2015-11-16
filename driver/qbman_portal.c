@@ -30,6 +30,8 @@
 #define QBMAN_WQCHAN_CONFIGURE 0x46
 
 /* CINH register offsets */
+#define QBMAN_CINH_SWP_EQCR_PI 0x800
+#define QBMAN_CINH_SWP_EQCR_CI 0x840
 #define QBMAN_CINH_SWP_EQAR    0x8c0
 #define QBMAN_CINH_SWP_DQPI    0xa00
 #define QBMAN_CINH_SWP_DCAP    0xac0
@@ -47,6 +49,7 @@
 #define QBMAN_CENA_SWP_CR      0x600
 #define QBMAN_CENA_SWP_RR(vb)  (0x700 + ((uint32_t)(vb) >> 1))
 #define QBMAN_CENA_SWP_VDQCR   0x780
+#define QBMAN_CENA_SWP_EQCR_CI 0x840
 
 /* Reverse mapping of QBMAN_CENA_SWP_DQRR() */
 #define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0x1ff) >> 6)
@@ -106,6 +109,7 @@ struct qb_attr_code code_sdqcr_dqsrc = QB_CODE(0, 0, 16);
 struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 {
 	int ret;
+	uint32_t eqcr_pi;
 	struct qbman_swp *p = kmalloc(sizeof(*p), GFP_KERNEL);
 	if (!p)
 		return NULL;
@@ -145,6 +149,13 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	   error.  The values that were calculated above will be
 	   applied when dequeues from a specific channel are enabled */
 	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_SDQCR, 0);
+	eqcr_pi = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_PI);
+	p->eqcr.pi = eqcr_pi & 0xF;
+	p->eqcr.pi_vb = eqcr_pi & QB_VALID_BIT;
+	p->eqcr.ci = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_CI) & 0xF;
+	p->eqcr.available = QBMAN_EQCR_SIZE - qm_cyc_diff(QBMAN_EQCR_SIZE,
+						p->eqcr.ci, p->eqcr.pi);
+
 	return p;
 }
 
@@ -402,9 +413,9 @@ void qbman_eq_desc_set_dca(struct qbman_eq_desc *d, int enable,
 #define EQAR_IDX(eqar)     ((eqar) & 0x7)
 #define EQAR_VB(eqar)      ((eqar) & 0x80)
 #define EQAR_SUCCESS(eqar) ((eqar) & 0x100)
-
-int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
-		      const struct qbman_fd *fd)
+int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
+				 const struct qbman_eq_desc *d,
+				 const struct qbman_fd *fd)
 {
 	uint32_t *p;
 	const uint32_t *cl = qb_cl(d);
@@ -420,9 +431,54 @@ int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
 	lwsync();
 	p[0] = cl[0] | EQAR_VB(eqar);
 	qbman_cena_write_complete_wo_shadow(&s->sys,
-				  QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)),
-				  p);
+				  QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
 	return 0;
+}
+
+int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
+				const struct qbman_eq_desc *d,
+				const struct qbman_fd *fd)
+{
+	uint32_t *p;
+	const uint32_t *cl = qb_cl(d);
+	uint32_t eqcr_ci;
+	uint8_t diff;
+
+	if (!s->eqcr.available) {
+		eqcr_ci = s->eqcr.ci;
+		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
+				QBMAN_CENA_SWP_EQCR_CI) & 0xF;
+		diff = qm_cyc_diff(QBMAN_EQCR_SIZE,
+				eqcr_ci, s->eqcr.ci);
+		s->eqcr.available += diff;
+		if (!diff)
+			return -EBUSY;
+	}
+
+	p = qbman_cena_write_start_wo_shadow(&s->sys,
+					QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7));
+	word_copy(&p[1], &cl[1], 7);
+	word_copy(&p[8], fd, sizeof(*fd) >> 2);
+	lwsync();
+	/* Set the verb byte, have to substitute in the valid-bit */
+	p[0] = cl[0] | s->eqcr.pi_vb;
+	qbman_cena_write_complete_wo_shadow(&s->sys,
+					QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7));
+	s->eqcr.pi++;
+	s->eqcr.pi &= 0xF;
+	s->eqcr.available--;
+	if (!(s->eqcr.pi & 7))
+		s->eqcr.pi_vb ^= QB_VALID_BIT;
+	return 0;
+}
+
+int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
+		      const struct qbman_fd *fd)
+{
+	if (s->sys.eqcr_mode == qman_eqcr_vb_array)
+		return qbman_swp_enqueue_array_mode(s, d, fd);
+	else    /* Use ring mode by default */
+		return qbman_swp_enqueue_ring_mode(s, d, fd);
 }
 
 /*************************/
@@ -551,7 +607,7 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 	lwsync();
 	p[0] = cl[0] | s->vdq.valid_bit;
 	s->vdq.valid_bit ^= QB_VALID_BIT;
-	qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR, p);
+	qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
 	return 0;
 }
 
@@ -996,8 +1052,7 @@ int qbman_swp_release(struct qbman_swp *s, const struct qbman_release_desc *d,
 	lwsync();
 	p[0] = cl[0] | RAR_VB(rar) | num_buffers;
 	qbman_cena_write_complete_wo_shadow(&s->sys,
-				  QBMAN_CENA_SWP_RCR(RAR_IDX(rar)),
-				  p);
+				  QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
 	return 0;
 }
 

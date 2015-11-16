@@ -131,6 +131,7 @@ struct qbman_swp_sys {
 	void __iomem *addr_cena;
 	void __iomem *addr_cinh;
 	uint32_t idx;
+	enum qbman_eqcr_mode eqcr_mode;
 };
 
 /* P_OFFSET is (ACCESS_CMD,0,12) - offset within the portal
@@ -206,7 +207,7 @@ static inline void qbman_cena_write_complete(struct qbman_swp_sys *s,
 }
 
 static inline void qbman_cena_write_complete_wo_shadow(struct qbman_swp_sys *s,
-						uint32_t offset, void *cmd)
+						uint32_t offset)
 {
 #ifdef QBMAN_CENA_TRACE
 	pr_info("qbman_cena_write_complete(%p:%d:0x%03x)\n",
@@ -214,6 +215,12 @@ static inline void qbman_cena_write_complete_wo_shadow(struct qbman_swp_sys *s,
 	hexdump(cmd, 64);
 #endif
 	dcbf(s->addr_cena + offset);
+}
+
+static inline uint32_t qbman_cena_read_reg(struct qbman_swp_sys *s,
+					   uint32_t offset)
+{
+	return __raw_readl(s->addr_cena + offset);
 }
 
 static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)
@@ -247,6 +254,12 @@ static inline void qbman_cena_invalidate_prefetch(struct qbman_swp_sys *s,
 	prefetch_for_load(s->addr_cena + offset);
 }
 
+static inline void qbman_cena_prefetch(struct qbman_swp_sys *s,
+				       uint32_t offset)
+{
+	prefetch_for_load(s->addr_cena + offset);
+}
+
 	/******************/
 	/* Portal support */
 	/******************/
@@ -258,10 +271,10 @@ static inline void qbman_cena_invalidate_prefetch(struct qbman_swp_sys *s,
 
 /* For MC portal use, we always configure with
  * DQRR_MF is (SWP_CFG,20,3) - DQRR max fill (<- 0x4)
- * EST is (SWP_CFG,16,3) - EQCR_CI stashing threshold (<- 0x0)
+ * EST is (SWP_CFG,16,3) - EQCR_CI stashing threshold (<- 0x2)
  * RPM is (SWP_CFG,12,2) - RCR production notification mode (<- 0x3)
  * DCM is (SWP_CFG,10,2) - DQRR consumption notification mode (<- 0x2)
- * EPM is (SWP_CFG,8,2) - EQCR production notification mode (<- 0x3)
+ * EPM is (SWP_CFG,8,2) - EQCR production notification mode (<- 0x2)
  * SD is (SWP_CFG,5,1) - memory stashing drop enable (<- FALSE)
  * SP is (SWP_CFG,4,1) - memory stashing priority (<- TRUE)
  * SE is (SWP_CFG,3,1) - memory stashing enable (<- TRUE)
@@ -297,7 +310,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 		pr_err("Could not allocate page for cena shadow\n");
 		return -1;
 	}
-
+	s->eqcr_mode = d->eqcr_mode;
 	BUG_ON(d->idx < 0);
 #ifdef QBMAN_CHECKING
 	/* We should never be asked to initialise for a portal that isn't in
@@ -307,7 +320,12 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	BUG_ON(reg);
 #endif
-	reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 0, 1, 1, 1, 0, 0);
+	if (s->eqcr_mode == qman_eqcr_vb_array)
+		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 0, 1, 1, 1,
+					0, 0);
+	else
+		reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 0, 1, 1, 1,
+					0, 0);
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {

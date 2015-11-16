@@ -36,6 +36,16 @@ uint32_t qman_version;
 /* TBD: as of QBMan 4.1, DQRR will be 8 rather than 4! */
 #define QBMAN_DQRR_SIZE 4
 
+#define QBMAN_EQCR_SIZE 8
+
+static inline u8 qm_cyc_diff(u8 ringsize, u8 first, u8 last)
+{
+	/* 'first' is included, 'last' is excluded */
+	if (first <= last)
+		return last - first;
+	return (2 * ringsize) + last - first;
+}
+
 /* --------------------- */
 /* portal data structure */
 /* --------------------- */
@@ -87,6 +97,12 @@ struct qbman_swp {
 		uint8_t dqrr_size;
 		int reset_bug;
 	} dqrr;
+	struct {
+		uint32_t pi;
+		uint32_t pi_vb;
+		uint32_t ci;
+		int available;
+	} eqcr;
 };
 
 /* -------------------------- */

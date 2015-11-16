@@ -101,9 +101,7 @@ struct qb_attr_code code_sdqcr_dqsrc = QB_CODE(0, 0, 16);
  * bug-work-around boolean once the PI wraps around the ring for the first time.
  *
  * Note: this still carries a slight additional cost once the decrementer hits
- * zero, so ideally the workaround should only be compiled in if the compiled
- * image needs to support affected chips. We use WORKAROUND_DQRR_RESET_BUG for
- * this.
+ * zero.
  */
 struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 {
@@ -128,16 +126,14 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	qman_version = p->desc->qman_version;
 	*/
 	qman_version = QMAN_REV_4000;
-	if ((qman_version & 0xFFFF0000) < QMAN_REV_4100)
+	if ((qman_version & 0xFFFF0000) < QMAN_REV_4100) {
 		p->dqrr.dqrr_size = 4;
-	else
+		p->dqrr.reset_bug = 1;
+	} else {
 		p->dqrr.dqrr_size = 8;
-	/* TODO: should also read PI/CI type registers and check that they're on
-	 * PoR values. If we're asked to initialise portals that aren't in reset
-	 * state, bad things will follow. */
-#ifdef WORKAROUND_DQRR_RESET_BUG
-	p->dqrr.reset_bug = 1;
-#endif
+		p->dqrr.reset_bug = 0;
+	}
+
 	ret = qbman_swp_sys_init(&p->sys, d, p->dqrr.dqrr_size);
 	if (ret) {
 		kfree(p);
@@ -600,7 +596,6 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 
 	/* Before using valid-bit to detect if something is there, we have to
 	* handle the case of the DQRR reset bug... */
-#ifdef WORKAROUND_DQRR_RESET_BUG
 	if (unlikely(s->dqrr.reset_bug)) {
 		/* We pick up new entries by cache-inhibited producer index,
 		 * which means that a non-coherent mapping would require us to
@@ -629,7 +624,6 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		qbman_cena_invalidate_prefetch(&s->sys,
 				QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 	}
-#endif
 	/* Invalidate dqrr entry because the dqrr stashing is disabled for now.
 	 */
 	qbman_cena_invalidate(&s->sys, QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));

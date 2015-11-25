@@ -151,7 +151,7 @@ int qbman_swp_interrupt_get_inhibit(struct qbman_swp *p);
  * interrupt inhibit register.
  * @p: the given software portal object.
  * @mask: The value to set in SWP_IIR register.
-  */
+ */
 void qbman_swp_interrupt_set_inhibit(struct qbman_swp *p, int inhibit);
 
 	/************/
@@ -221,7 +221,7 @@ void qbman_swp_push_set(struct qbman_swp *s, uint8_t channel_idx, int enable);
 
 /**
  * struct qbman_pull_desc - the structure for pull dequeue descriptor
- * @dont_manipulate_directly: the 16 32bit data to represent the whole
+ * @dont_manipulate_directly: the 6 32bit data to represent the whole
  * possible settings for pull dequeue descriptor.
  */
 struct qbman_pull_desc {
@@ -706,7 +706,7 @@ uint64_t qbman_result_cgcu_icnt(const struct qbman_result *scn);
 
 /**
  * struct qbman_eq_desc - structure of enqueue descriptor
- * @dont_manipulate_directly: the 16 32bit data to represent the whole
+ * @dont_manipulate_directly: the 8 32bit data to represent the whole
  * possible qbman enqueue setting in enqueue descriptor.
  */
 struct qbman_eq_desc {
@@ -887,7 +887,7 @@ int qbman_swp_enqueue_thresh(struct qbman_swp *s, unsigned int thresh);
 	/*******************/
 /**
  * struct qbman_release_desc - The structure for buffer release descriptor
- * @dont_manipulate_directly: the 16 32bit data to represent the whole
+ * @dont_manipulate_directly: the 32bit data to represent the whole
  * possible settings of qbman release descriptor.
  */
 struct qbman_release_desc {

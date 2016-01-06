@@ -126,10 +126,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	p->vdq.valid_bit = QB_VALID_BIT;
 	p->dqrr.next_idx = 0;
 	p->dqrr.valid_bit = QB_VALID_BIT;
-	/* Temporarily hard code the qbman_version to QMan_4.0.
 	qman_version = p->desc->qman_version;
-	*/
-	qman_version = QMAN_REV_4000;
 	if ((qman_version & 0xFFFF0000) < QMAN_REV_4100) {
 		p->dqrr.dqrr_size = 4;
 		p->dqrr.reset_bug = 1;

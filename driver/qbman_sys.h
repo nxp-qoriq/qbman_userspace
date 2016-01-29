@@ -289,12 +289,12 @@ static inline void qbman_cena_prefetch(struct qbman_swp_sys *s,
  * RPM is (SWP_CFG,12,2) - RCR production notification mode (<- 0x3)
  * DCM is (SWP_CFG,10,2) - DQRR consumption notification mode (<- 0x2)
  * EPM is (SWP_CFG,8,2) - EQCR production notification mode (<- 0x2)
- * SD is (SWP_CFG,5,1) - memory stashing drop enable (<- FALSE)
+ * SD is (SWP_CFG,5,1) - memory stashing drop enable (<- TRUE)
  * SP is (SWP_CFG,4,1) - memory stashing priority (<- TRUE)
  * SE is (SWP_CFG,3,1) - memory stashing enable (<- TRUE)
  * DP is (SWP_CFG,2,1) - dequeue stashing priority (<- TRUE)
- * DE is (SWP_CFG,1,1) - dequeue stashing enable (<- FALSE)
- * EP is (SWP_CFG,0,1) - EQCR_CI stashing priority (<- FALSE)
+ * DE is (SWP_CFG,1,1) - dequeue stashing enable (<- TRUE)
+ * EP is (SWP_CFG,0,1) - EQCR_CI stashing priority (<- TRUE)
  */
 static inline uint32_t qbman_set_swp_cfg(uint8_t max_fill, uint8_t wn,
 					uint8_t est, uint8_t rpm, uint8_t dcm,
@@ -335,11 +335,11 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	BUG_ON(reg);
 #endif
 	if (s->eqcr_mode == qman_eqcr_vb_array)
-		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 0, 1, 1, 1,
-					1, 0);
+		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1,
+					1, 1);
 	else
-		reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 0, 1, 1, 1,
-					1, 0);
+		reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 1, 1, 1, 1,
+					1, 1);
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {

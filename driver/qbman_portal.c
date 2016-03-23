@@ -1059,7 +1059,7 @@ int qbman_swp_acquire(struct qbman_swp *s, uint32_t bpid, uint64_t *buffers,
 		      unsigned int num_buffers)
 {
 	uint32_t *p;
-	uint32_t verb, rslt, num;
+	uint32_t rslt, num;
 	BUG_ON(!num_buffers || (num_buffers > 7));
 
 	/* Start the management command */
@@ -1076,10 +1076,9 @@ int qbman_swp_acquire(struct qbman_swp *s, uint32_t bpid, uint64_t *buffers,
 	p = qbman_swp_mc_complete(s, p, p[0] | QBMAN_MC_ACQUIRE);
 
 	/* Decode the outcome */
-	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
 	num = qb_attr_code_decode(&code_acquire_r_num, p);
-	BUG_ON(verb != QBMAN_MC_ACQUIRE);
+	BUG_ON(qb_attr_code_decode(&code_generic_verb, p) != QBMAN_MC_ACQUIRE);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {
@@ -1103,7 +1102,7 @@ static int qbman_swp_alt_fq_state(struct qbman_swp *s, uint32_t fqid,
 				 uint8_t alt_fq_verb)
 {
 	uint32_t *p;
-	uint32_t verb, rslt;
+	uint32_t rslt;
 
 	/* Start the management command */
 	p = qbman_swp_mc_start(s);
@@ -1115,9 +1114,8 @@ static int qbman_swp_alt_fq_state(struct qbman_swp *s, uint32_t fqid,
 	p = qbman_swp_mc_complete(s, p, p[0] | alt_fq_verb);
 
 	/* Decode the outcome */
-	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
-	BUG_ON(verb != alt_fq_verb);
+	BUG_ON(qb_attr_code_decode(&code_generic_verb, p) != alt_fq_verb);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {
@@ -1168,7 +1166,7 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 			      uint64_t ctx)
 {
 	uint32_t *p;
-	uint32_t verb, rslt;
+	uint32_t rslt;
 
 	/* Start the management command */
 	p = qbman_swp_mc_start(s);
@@ -1184,9 +1182,9 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 	p = qbman_swp_mc_complete(s, p, p[0] | QBMAN_WQCHAN_CONFIGURE);
 
 	/* Decode the outcome */
-	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
-	BUG_ON(verb != QBMAN_WQCHAN_CONFIGURE);
+	BUG_ON(qb_attr_code_decode(&code_generic_verb, p)
+					!= QBMAN_WQCHAN_CONFIGURE);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {

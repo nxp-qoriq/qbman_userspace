@@ -94,7 +94,7 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 		   struct qbman_attr *a)
 {
 	uint32_t *p;
-	uint32_t verb, rslt;
+	uint32_t rslt;
 	uint32_t *attr = ATTR32(a);
 
 	qbman_bp_attr_clear(a);
@@ -111,9 +111,8 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 	p = qbman_swp_mc_complete(s, p, p[0] | QBMAN_BP_QUERY);
 
 	/* Decode the outcome */
-	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
-	BUG_ON(verb != QBMAN_BP_QUERY);
+	BUG_ON(qb_attr_code_decode(&code_generic_verb, p) != QBMAN_BP_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {
@@ -315,7 +314,7 @@ void qbman_fq_attr_clear(struct qbman_attr *a)
 int qbman_fq_query(struct qbman_swp *s, uint32_t fqid, struct qbman_attr *desc)
 {
 	uint32_t *p;
-	uint32_t verb, rslt;
+	uint32_t rslt;
 	uint32_t *d = ATTR32(desc);
 
 	qbman_fq_attr_clear(desc);
@@ -327,9 +326,8 @@ int qbman_fq_query(struct qbman_swp *s, uint32_t fqid, struct qbman_attr *desc)
 	p = qbman_swp_mc_complete(s, p, QBMAN_FQ_QUERY);
 
 	/* Decode the outcome */
-	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
-	BUG_ON(verb != QBMAN_FQ_QUERY);
+	BUG_ON(qb_attr_code_decode(&code_generic_verb, p) != QBMAN_FQ_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {
@@ -456,7 +454,7 @@ int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
 			 struct qbman_attr *state)
 {
 	uint32_t *p;
-	uint32_t verb, rslt;
+	uint32_t rslt;
 	uint32_t *d = ATTR32(state);
 
 	qbman_fq_attr_clear(state);
@@ -468,9 +466,8 @@ int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
 	p = qbman_swp_mc_complete(s, p, QBMAN_FQ_QUERY_NP);
 
 	/* Decode the outcome */
-	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
-	BUG_ON(verb != QBMAN_FQ_QUERY_NP);
+	BUG_ON(qb_attr_code_decode(&code_generic_verb, p) != QBMAN_FQ_QUERY_NP);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {
@@ -858,7 +855,7 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 		       struct qbman_attr *a)
 {
 	uint32_t *p;
-	uint32_t verb, rslt;
+	uint32_t rslt;
 	uint32_t *attr = ATTR32(a);
 
 	qbman_wqchan_attr_clear(a);
@@ -875,9 +872,8 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 	p = qbman_swp_mc_complete(s, p, p[0] | QBMAN_WQ_QUERY);
 
 	/* Decode the outcome */
-	verb = qb_attr_code_decode(&code_generic_verb, p);
 	rslt = qb_attr_code_decode(&code_generic_rslt, p);
-	BUG_ON(verb != QBMAN_WQ_QUERY);
+	BUG_ON(qb_attr_code_decode(&code_generic_verb, p); != QBMAN_WQ_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(rslt != QBMAN_MC_RSLT_OK)) {

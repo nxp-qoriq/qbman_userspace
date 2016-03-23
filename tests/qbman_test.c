@@ -138,7 +138,6 @@ int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
 static struct qbman_swp *swp;
 static struct qbman_eq_desc eqdesc;
 static struct qbman_pull_desc pulldesc;
-static struct qbman_release_desc releasedesc;
 
 /* FQ ctx attribute values for the test code. */
 #define FQCTX_HI 0xabbaf00d
@@ -154,6 +153,18 @@ static struct qbman_fd_simple fd = {
 	.flc_lo = 0x5a5a5a5a,
 	.flc_hi = 0x6b6b6b6b
 };
+
+struct qbman_fd fd_eq[NUM_EQ_FRAME];
+struct qbman_fd fd_dq[NUM_DQ_FRAME];
+
+#ifdef CONFIG_BUGON
+/* "Buffers" to be released (and storage for buffers to be acquired) */
+static uint64_t rbufs[] = { 0xf00dabba01234567ull, 0x9988776655443322ull };
+static uint64_t abufs[2];
+#endif
+
+#ifndef EQ_DQ_CYCLE_TEST
+static struct qbman_release_desc releasedesc;
 
 static void fd_inc(struct qbman_fd_simple *_fd)
 {
@@ -171,21 +182,9 @@ static int fd_cmp(struct qbman_fd *fda, struct qbman_fd *fdb)
 	return 0;
 }
 
-struct qbman_fd fd_eq[NUM_EQ_FRAME];
-struct qbman_fd fd_dq[NUM_DQ_FRAME];
-
-/* "Buffers" to be released (and storage for buffers to be acquired) */
-static uint64_t rbufs[] = { 0xf00dabba01234567ull, 0x9988776655443322ull };
-static uint64_t abufs[2];
-
 static void do_enqueue(struct qbman_swp *p)
 {
 	int i, j, ret;
-	struct qbman_eq_response *eq_storage;
-	dma_addr_t eq_storage_phys;
-
-	eq_storage = (struct qbman_eq_response *)mem_map.ptr;
-	eq_storage_phys = mem_map.phys_addr;
 
 #ifdef QBMAN_USE_QD
 	pr_info("*****QBMan_test: Enqueue %d frames to QD %d\n",
@@ -316,7 +315,42 @@ static void do_pull_dequeue(struct qbman_swp *p)
 	}
 }
 
-#ifdef EQ_DQ_CYCLE_TEST
+static void release_buffer(struct qbman_swp *p)
+{
+	qbman_release_desc_clear(&releasedesc);
+	qbman_release_desc_set_bpid(&releasedesc, QBMAN_TEST_BPID);
+	pr_info("*****QBMan_test: Release buffer to BP %d\n",
+					QBMAN_TEST_BPID);
+	BUG_ON(qbman_swp_release(p, &releasedesc, &rbufs[0],
+					ARRAY_SIZE(rbufs)));
+}
+
+static void acquire_buffer(struct qbman_swp *p)
+{
+	pr_info("*****QBMan_test: Acquire buffer from BP %d\n",
+					QBMAN_TEST_BPID);
+	BUG_ON(qbman_swp_acquire(p, QBMAN_TEST_BPID, &abufs[0], 2) != 2);
+}
+
+static void ceetm_test(struct qbman_swp *p)
+{
+	int i, j;
+
+	qbman_eq_desc_clear(&eqdesc);
+	qbman_eq_desc_set_no_orp(&eqdesc, 0);
+	qbman_eq_desc_set_fq(&eqdesc, QBMAN_TEST_LFQID);
+	pr_info("*****QBMan_test: Enqueue to LFQID %x\n",
+						QBMAN_TEST_LFQID);
+	for (i = 0; i < NUM_EQ_FRAME; i++) {
+		BUG_ON(qbman_swp_enqueue(p, &eqdesc,
+					(const struct qbman_fd *)&fd));
+		for (j = 0; j < 8; j++)
+			fd_eq[i].words[j] = *((uint32_t *)&fd + j);
+		fd_inc(&fd);
+	}
+}
+
+#else /* EQ_DQ_CYCLE_TEST */
 static inline uint64_t read_cntvct(void)
 {
 	uint64_t ret;
@@ -459,46 +493,6 @@ retry:				ret = qbman_swp_enqueue(p, &eqdesc,
 
 }
 #endif
-
-static void release_buffer(struct qbman_swp *p)
-{
-	int ret;
-	qbman_release_desc_clear(&releasedesc);
-	qbman_release_desc_set_bpid(&releasedesc, QBMAN_TEST_BPID);
-	pr_info("*****QBMan_test: Release buffer to BP %d\n",
-					QBMAN_TEST_BPID);
-	ret = qbman_swp_release(p, &releasedesc, &rbufs[0],
-					ARRAY_SIZE(rbufs));
-	BUG_ON(ret);
-}
-
-static void acquire_buffer(struct qbman_swp *p)
-{
-	int ret;
-	pr_info("*****QBMan_test: Acquire buffer from BP %d\n",
-					QBMAN_TEST_BPID);
-	ret = qbman_swp_acquire(p, QBMAN_TEST_BPID, &abufs[0], 2);
-	BUG_ON(ret != 2);
-}
-
-static void ceetm_test(struct qbman_swp *p)
-{
-	int i, j, ret;
-
-	qbman_eq_desc_clear(&eqdesc);
-	qbman_eq_desc_set_no_orp(&eqdesc, 0);
-	qbman_eq_desc_set_fq(&eqdesc, QBMAN_TEST_LFQID);
-	pr_info("*****QBMan_test: Enqueue to LFQID %x\n",
-						QBMAN_TEST_LFQID);
-	for (i = 0; i < NUM_EQ_FRAME; i++) {
-		ret = qbman_swp_enqueue(p, &eqdesc,
-					(const struct qbman_fd *)&fd);
-		BUG_ON(ret);
-		for (j = 0; j < 8; j++)
-			fd_eq[i].words[j] = *((uint32_t *)&fd + j);
-		fd_inc(&fd);
-	}
-}
 
 int qbman_test(void)
 {

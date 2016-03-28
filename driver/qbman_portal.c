@@ -737,7 +737,7 @@ int qbman_result_has_new_result(struct qbman_swp *s,
 	 * however the same address that was provided to us non-const in the
 	 * first place, for directing hardware DMA to. So we can cast away the
 	 * const because it is mutable from our perspective. */
-	uint32_t *p = qb_cl((struct qbman_result *)dq);
+	uint32_t *p = (uint32_t *)(unsigned long)qb_cl(dq);
 	uint32_t token;
 
 	token = qb_attr_code_decode(&code_dqrr_tok_detect, &p[1]);

@@ -669,7 +669,8 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		 * (which increments one at a time), rather than on pi (which
 		 * can burst and wrap-around between our snapshots of it).
 		 */
-		if (s->dqrr.next_idx == (s->dqrr.dqrr_size - 1)) {
+		BUG_ON((s->dqrr.dqrr_size - 1) < 0);
+		if (s->dqrr.next_idx == (s->dqrr.dqrr_size - 1u)) {
 			pr_debug("DEBUG: next_idx=%d, pi=%d, clear reset bug\n",
 				s->dqrr.next_idx, pi);
 			s->dqrr.reset_bug = 0;
@@ -875,7 +876,7 @@ uint32_t qbman_result_DQ_frame_count(const struct qbman_result *dq)
 
 uint64_t qbman_result_DQ_fqd_ctx(const struct qbman_result *dq)
 {
-	const uint64_t *p = (uint64_t *)qb_cl(dq);
+	const uint64_t *p = (const uint64_t *)qb_cl(dq);
 
 	return qb_attr_code_decode_64(&code_dqrr_ctx_lo, p);
 }
@@ -912,7 +913,7 @@ uint32_t qbman_result_SCN_rid(const struct qbman_result *scn)
 
 uint64_t qbman_result_SCN_ctx(const struct qbman_result *scn)
 {
-	const uint64_t *p = (uint64_t *)qb_cl(scn);
+	const uint64_t *p = (const uint64_t *)qb_cl(scn);
 
 	return qb_attr_code_decode_64(&code_scn_ctx_lo, p);
 }

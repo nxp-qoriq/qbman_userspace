@@ -93,8 +93,12 @@ else
    ARFLAGS	:= rcs
    $(info Building for static libraries and linking)
 endif
-CFLAGS		+= -pthread -O2 -Wall
-CFLAGS		+= -Wshadow -Wstrict-prototypes -Wwrite-strings -Wdeclaration-after-statement
+CFLAGS		+= -pthread -O2
+CFLAGS		+= -W -Wall -Werror -Wstrict-prototypes -Wmissing-prototypes
+CFLAGS		+= -Wmissing-declarations -Wold-style-definition
+CFLAGS		+= -Wpointer-arith -Wcast-align -Wnested-externs -Wcast-qual
+CFLAGS		+= -Wformat-nonliteral -Wformat-security -Wundef
+CFLAGS		+= -Wwrite-strings -I../flib/qbman/include -Wno-error
 CFLAGS		+= -I$(TOP_LEVEL)/include $(addprefix -I,$($(ARCH)_SPEC_INC_PATH))
 CFLAGS		+= -DPACKAGE_VERSION=\"$(shell git describe --always --dirty 2>/dev/null || echo n/a)\" -D_GNU_SOURCE
 CFLAGS		+= $(addprefix -D,$($(ARCH)_SPEC_DEFINE) $(EXTRA_DEFINE))

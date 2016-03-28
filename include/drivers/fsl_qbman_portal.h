@@ -268,6 +268,16 @@ void qbman_pull_desc_set_storage(struct qbman_pull_desc *d,
  */
 void qbman_pull_desc_set_numframes(struct qbman_pull_desc *d,
 				   uint8_t numframes);
+/**
+ * qbman_pull_desc_set_token() - Set dequeue token for pull command
+ * @d: the dequeue descriptor
+ * @token: the token to be set
+ *
+ * token is the value that shows up in the dequeue response that can be used to
+ * detect when the results have been published. The easiest technique is to zero
+ * result "storage" before issuing a dequeue, and use any non-zero 'token' value
+ */
+void qbman_pull_desc_set_token(struct qbman_pull_desc *d, uint8_t token);
 
 /* Exactly one of the following descriptor "actions" should be set. (Calling any
  * one of these will replace the effect of any prior call to one of these.)

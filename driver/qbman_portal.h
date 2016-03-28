@@ -232,9 +232,13 @@ static inline void qb_attr_code_encode_64(const struct qb_attr_code *code,
 static inline int32_t qb_attr_code_makesigned(const struct qb_attr_code *code,
 					  uint32_t val)
 {
-	BUG_ON(val >= (1 << code->width));
+	BUG_ON(val >= (1u << code->width));
+	/* code->width should never exceed the width of val. If it does then a
+	 * different function with larger val size must be used to translate
+	 * from unsigned to signed */
+	BUG_ON(code->width > sizeof(val) * CHAR_BIT);
 	/* If the high bit was set, it was encoding a negative */
-	if (val >= (1 << (code->width - 1)))
+	if (val >= 1u << (code->width - 1))
 		return (int32_t)0 - (int32_t)(((uint32_t)1 << code->width) -
 			val);
 	/* Otherwise, it was encoding a positive */

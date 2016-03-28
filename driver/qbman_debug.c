@@ -84,7 +84,7 @@ static struct qb_attr_code code_bp_sdcnt = QB_CODE(13, 0, 8);
 static struct qb_attr_code code_bp_hdcnt = QB_CODE(13, 8, 8);
 static struct qb_attr_code code_bp_sscnt = QB_CODE(13, 16, 8);
 
-void qbman_bp_attr_clear(struct qbman_attr *a)
+static void qbman_bp_attr_clear(struct qbman_attr *a)
 {
 	memset(a, 0, sizeof(*a));
 	attr_type_set(a, qbman_attr_usage_bpool);
@@ -304,7 +304,7 @@ static struct qb_attr_code code_fq_pl = QB_CODE(8, 15, 1);
 static struct qb_attr_code code_fq_vfqid = QB_CODE(9, 0, 24);
 static struct qb_attr_code code_fq_erfqid = QB_CODE(10, 0, 24);
 
-void qbman_fq_attr_clear(struct qbman_attr *a)
+static void qbman_fq_attr_clear(struct qbman_attr *a)
 {
 	memset(a, 0, sizeof(*a));
 	attr_type_set(a, qbman_attr_usage_fq);
@@ -557,7 +557,7 @@ static struct qb_attr_code code_cgr_cg_wr_addr_hi = QB_CODE(9, 0, 32);
 static struct qb_attr_code code_cgr_cscn_ctx_lo = QB_CODE(10, 0, 32);
 static struct qb_attr_code code_cgr_cscn_ctx_hi = QB_CODE(11, 0, 32);
 
-void qbman_cgr_attr_clear(struct qbman_attr *a)
+static void qbman_cgr_attr_clear(struct qbman_attr *a)
 {
 	memset(a, 0, sizeof(*a));
 	attr_type_set(a, qbman_attr_usage_cgr);
@@ -845,7 +845,7 @@ static struct qb_attr_code code_wqchan_cdan_ctx_hi = QB_CODE(3, 0, 32);
 static struct qb_attr_code code_wqchan_cdan_wqid = QB_CODE(1, 16, 16);
 static struct qb_attr_code code_wqchan_ctrl = QB_CODE(1, 8, 8);
 
-void qbman_wqchan_attr_clear(struct qbman_attr *a)
+static void qbman_wqchan_attr_clear(struct qbman_attr *a)
 {
 	memset(a, 0, sizeof(*a));
 	attr_type_set(a, qbman_attr_usage_wqchan);

@@ -127,9 +127,9 @@ struct qbman_swp_sys {
 	 * marshalled from these allocated areas using QBMan's "MC access
 	 * registers". CINH accesses are atomic so there's no need for a
 	 * place-holder. */
-	void *cena;
-	void __iomem *addr_cena;
-	void __iomem *addr_cinh;
+	uint8_t *cena;
+	uint8_t __iomem *addr_cena;
+	uint8_t __iomem *addr_cinh;
 	uint32_t idx;
 	enum qbman_eqcr_mode eqcr_mode;
 };
@@ -225,7 +225,7 @@ static inline uint32_t qbman_cena_read_reg(struct qbman_swp_sys *s,
 
 static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)
 {
-	uint32_t *shadow = s->cena + offset;
+	uint32_t *shadow = (uint32_t *)(s->cena + offset);
 	unsigned int loop;
 #ifdef QBMAN_CENA_TRACE
 	pr_info("qbman_cena_read(%p:%d:0x%03x) %p\n",

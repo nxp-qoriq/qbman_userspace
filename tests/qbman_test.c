@@ -30,6 +30,8 @@
 #include "../driver/qbman_debug.h"
 #include "../driver/qbman_private.h"
 
+#undef BUG_ON
+#define BUG_ON(x) if (x) pr_err("BUG hit. Line %d, condition %s", __LINE__, #x)
 
 #define EQ_DQ_CYCLE_TEST
 /* Define this while testing VDQ to memory in cycle test */
@@ -68,7 +70,7 @@ static int check_fd(void)
 	return 0;
 }
 
-int qbman_swp_mmap(struct qbman_test_swp_ioctl *params)
+static int qbman_swp_mmap(struct qbman_test_swp_ioctl *params)
 {
 	int ret = check_fd();
 	if (ret)
@@ -81,7 +83,7 @@ int qbman_swp_mmap(struct qbman_test_swp_ioctl *params)
 	return 0;
 }
 
-int qbman_swp_munmap(struct qbman_test_swp_ioctl *params)
+static int qbman_swp_munmap(struct qbman_test_swp_ioctl *params)
 {
 	int ret = check_fd();
 	if (ret)
@@ -93,7 +95,8 @@ int qbman_swp_munmap(struct qbman_test_swp_ioctl *params)
 	}
 	return 0;
 }
-int qbman_dma_mmap(struct qbman_test_dma_ioctl *params)
+
+static int qbman_dma_mmap(struct qbman_test_dma_ioctl *params)
 {
 	int ret = check_fd();
 	if (ret)
@@ -106,7 +109,7 @@ int qbman_dma_mmap(struct qbman_test_dma_ioctl *params)
 	return 0;
 }
 
-int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
+static int qbman_dma_munmap(struct qbman_test_dma_ioctl *params)
 {
 	int ret = check_fd();
 	if (ret)
@@ -315,7 +318,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 	}
 }
 
-static void release_buffer(struct qbman_swp *p)
+static void release_buffer(struct qbman_swp *p __maybe_unused)
 {
 	qbman_release_desc_clear(&releasedesc);
 	qbman_release_desc_set_bpid(&releasedesc, QBMAN_TEST_BPID);
@@ -325,14 +328,14 @@ static void release_buffer(struct qbman_swp *p)
 					ARRAY_SIZE(rbufs)));
 }
 
-static void acquire_buffer(struct qbman_swp *p)
+static void acquire_buffer(struct qbman_swp *p __maybe_unused)
 {
 	pr_info("*****QBMan_test: Acquire buffer from BP %d\n",
 					QBMAN_TEST_BPID);
 	BUG_ON(qbman_swp_acquire(p, QBMAN_TEST_BPID, &abufs[0], 2) != 2);
 }
 
-static void ceetm_test(struct qbman_swp *p)
+static void ceetm_test(struct qbman_swp *p __maybe_unused)
 {
 	int i, j;
 
@@ -494,7 +497,7 @@ retry:				ret = qbman_swp_enqueue(p, &eqdesc,
 }
 #endif
 
-int qbman_test(void)
+static int qbman_test(void)
 {
 	struct qbman_swp_desc pd;
 	uint32_t reg;
@@ -508,14 +511,14 @@ int qbman_test(void)
 		return ret;
 	}
 
-	pd.cena_bar = (void *)portal_map.portal1_cena;
-	pd.cinh_bar = (void *)portal_map.portal1_cinh;
+	pd.cena_bar = (uint8_t *)portal_map.portal1_cena;
+	pd.cinh_bar = (uint8_t *)portal_map.portal1_cinh;
 	pd.irq = -1;
 	/* Set eqcr_mode to array mode if needed */
 	/* pd.eqcr_mode = qman_eqcr_vb_array; */
 
 	/* Detect whether the mc image is the test image with GPP setup */
-	reg = __raw_readl(pd.cena_bar + 0x4);
+	reg = __raw_readl((uint8_t *)pd.cena_bar + 0x4);
 	if (reg != 0xdeadbeef) {
 		pr_err("The MC image doesn't have GPP test setup, stop testing\n");
 		qbman_swp_munmap(&portal_map);
@@ -583,7 +586,7 @@ int qbman_test(void)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	fprintf(stderr, "Start QBMan test\n");
 	qbman_test();

@@ -410,7 +410,7 @@ void qbman_eq_desc_set_dca(struct qbman_eq_desc *d, int enable,
 #define EQAR_IDX(eqar)     ((eqar) & 0x7)
 #define EQAR_VB(eqar)      ((eqar) & 0x80)
 #define EQAR_SUCCESS(eqar) ((eqar) & 0x100)
-int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
+static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 				 const struct qbman_eq_desc *d,
 				 const struct qbman_fd *fd)
 {
@@ -432,7 +432,7 @@ int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 	return 0;
 }
 
-int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
+static int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
 				const struct qbman_eq_desc *d,
 				const struct qbman_fd *fd)
 {

@@ -75,8 +75,8 @@ enum qbman_eqcr_mode {
  */
 struct qbman_swp_desc {
 	const struct qbman_block_desc *block;
-	void *cena_bar;
-	void *cinh_bar;
+	uint8_t *cena_bar;
+	uint8_t *cinh_bar;
 	int irq;
 	int idx;
 	uint32_t qman_version;

@@ -33,8 +33,7 @@ uint32_t qman_version;
 /* Management command result codes */
 #define QBMAN_MC_RSLT_OK      0xf0
 
-/* TBD: as of QBMan 4.1, DQRR will be 8 rather than 4! */
-#define QBMAN_DQRR_SIZE 4
+/* QBMan DQRR size is set at runtime in qbman_portal.c */
 
 #define QBMAN_EQCR_SIZE 8
 

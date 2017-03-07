@@ -37,7 +37,8 @@
 /* The platform-independent code shouldn't need endianness, except for
  * weird/fast-path cases like qbman_result_has_token(), which needs to
  * perform a passive and endianness-specific test on a read-only data structure
- * very quickly. It's an exception, and this symbol is used for that case. */
+ * very quickly. It's an exception, and this symbol is used for that case.
+ */
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define DQRR_TOK_OFFSET 0
 #define QBMAN_RESULT_VERB_OFFSET_IN_MEM 24

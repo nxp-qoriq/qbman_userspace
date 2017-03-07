@@ -60,7 +60,8 @@
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
  * are also available in kernel-space, these definitions provide compatibility
- * with certain attributes and types used in those interfaces. */
+ * with certain attributes and types used in those interfaces.
+ */
 
 /* Required compiler attributes */
 #define __maybe_unused	__attribute__((unused))
@@ -93,6 +94,7 @@ typedef uint64_t	dma_addr_t;
 typedef cpu_set_t	cpumask_t;
 #define spinlock_t	pthread_mutex_t
 typedef	u32		compat_uptr_t;
+
 static inline void __user *compat_ptr(compat_uptr_t uptr)
 {
 	return (void __user *)(unsigned long)uptr;
@@ -109,6 +111,7 @@ static inline u32 in_be32(volatile void *__p)
 	volatile u32 *p = __p;
 	return *p;
 }
+
 static inline void out_be32(volatile void *__p, u32 val)
 {
 	volatile u32 *p = __p;
@@ -149,10 +152,10 @@ do { \
 #ifdef pr_debug
 #undef pr_debug
 #endif
-#define pr_debug(fmt, args...)	do { ; } while(0)
+#define pr_debug(fmt, args...) {}
 #define BUG_ON(c)		do { ; } while(0)
-#define might_sleep_if(c)	do { ; } while(0)
-#define msleep(x)		do { ; } while(0)
+#define might_sleep_if(c) {}
+#define msleep(x) {}
 #endif
 #define WARN_ON(c, str) \
 do { \
@@ -180,11 +183,13 @@ struct list_head n = { \
 	.prev = &n, \
 	.next = &n \
 }
+
 #define INIT_LIST_HEAD(p) \
 do { \
 	struct list_head *__p298 = (p); \
-	__p298->prev = __p298->next =__p298; \
-} while(0)
+	__p298->next = __p298; \
+	__p298->prev = __p298->next; \
+} while (0)
 #define list_entry(node, type, member) \
 	(type *)((void *)node - offsetof(type, member))
 #define list_empty(p) \
@@ -192,7 +197,7 @@ do { \
 	const struct list_head *__p298 = (p); \
 	((__p298->next == __p298) && (__p298->prev == __p298)); \
 })
-#define list_add(p,l) \
+#define list_add(p, l) \
 do { \
 	struct list_head *__p298 = (p); \
 	struct list_head *__l298 = (l); \
@@ -200,8 +205,8 @@ do { \
 	__p298->prev = __l298; \
 	__l298->next->prev = __p298; \
 	__l298->next = __p298; \
-} while(0)
-#define list_add_tail(p,l) \
+} while (0)
+#define list_add_tail(p, l) \
 do { \
 	struct list_head *__p298 = (p); \
 	struct list_head *__l298 = (l); \
@@ -209,7 +214,7 @@ do { \
 	__p298->next = __l298; \
 	__l298->prev->next = __p298; \
 	__l298->prev = __p298; \
-} while(0)
+} while (0)
 #define list_for_each(i, l)				\
 	for (i = (l)->next; i != (l); i = i->next)
 #define list_for_each_safe(i, j, l)			\
@@ -227,7 +232,7 @@ do { \
 do { \
 	(i)->next->prev = (i)->prev; \
 	(i)->prev->next = (i)->next; \
-} while(0)
+} while (0)
 
 /* Other miscellaneous interfaces our APIs depend on; */
 
@@ -254,12 +259,9 @@ typedef uint32_t	phandle;
 #define GFP_KERNEL	0
 #define __KERNEL__
 #define __init
-#define __raw_readb(p)	*(const volatile unsigned char *)(p)
-#define __raw_readl(p)	*(const volatile unsigned int *)(p)
-#define __raw_writel(v, p) \
-do { \
-	*(volatile unsigned int *)(p) = (v); \
-} while (0)
+#define __raw_readb(p)	(*(const volatile unsigned char *)(p))
+#define __raw_readl(p)	(*(const volatile unsigned int *)(p))
+#define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
 
 /* printk() stuff */
 #define printk(fmt, args...)	do_not_use_printk
@@ -276,27 +278,32 @@ static inline void copy_words(void *dest, const void *src, size_t sz)
 	u32 *__dest = dest;
 	const u32 *__src = src;
 	size_t __sz = sz >> 2;
+
 	BUG_ON((unsigned long)dest & 0x3);
 	BUG_ON((unsigned long)src & 0x3);
 	BUG_ON(sz & 0x3);
 	while (__sz--)
 		*(__dest++) = *(__src++);
 }
+
 static inline void copy_shorts(void *dest, const void *src, size_t sz)
 {
 	u16 *__dest = dest;
 	const u16 *__src = src;
 	size_t __sz = sz >> 1;
+
 	BUG_ON((unsigned long)dest & 0x1);
 	BUG_ON((unsigned long)src & 0x1);
 	BUG_ON(sz & 0x1);
 	while (__sz--)
 		*(__dest++) = *(__src++);
 }
+
 static inline void copy_bytes(void *dest, const void *src, size_t sz)
 {
 	u8 *__dest = dest;
 	const u8 *__src = src;
+
 	while (sz--)
 		*(__dest++) = *(__src++);
 }
@@ -349,11 +356,8 @@ static inline void copy_bytes(void *dest, const void *src, size_t sz)
 #define raw_spin_unlock_irqrestore(x, f)	spin_unlock(x)
 
 /* Completion stuff */
-#define DECLARE_COMPLETION(n) int n = 0;
-#define complete(n) \
-do { \
-	*n = 1; \
-} while(0)
+#define DECLARE_COMPLETION(n) int n = 0
+#define complete(n) { *n = 1; }
 #define wait_for_completion(n) \
 do { \
 	while (!*n) { \
@@ -387,22 +391,26 @@ struct resource {
 /* Allocator stuff */
 #define kmalloc(sz, t)	malloc(sz)
 #define vmalloc(sz)	malloc(sz)
-#define kfree(p)	do { if (p) free(p); } while (0)
+#define kfree(p)	{ if (p) free(p); }
 static inline void *kzalloc(size_t sz, gfp_t __foo __always_unused)
 {
 	void *ptr = malloc(sz);
+
 	if (ptr)
 		memset(ptr, 0, sz);
 	return ptr;
 }
+
 static inline unsigned long get_zeroed_page(gfp_t __foo __always_unused)
 {
 	void *p;
+
 	if (posix_memalign(&p, 4096, 4096))
 		return 0;
 	memset(p, 0, 4096);
 	return (unsigned long)p;
 }
+
 static inline void free_page(unsigned long p)
 {
 	free((void *)p);
@@ -452,58 +460,72 @@ static inline void *kmem_cache_zalloc(struct kmem_cache *c, gfp_t f)
 #define BITS_MASK(idx)	((unsigned long)1 << ((idx) & (BITS_PER_ULONG - 1)))
 #define BITS_IDX(idx)	((idx) >> SHIFT_PER_ULONG)
 static inline unsigned long test_bits(unsigned long mask,
-				volatile unsigned long *p)
+				      volatile unsigned long *p)
 {
 	return *p & mask;
 }
+
 static inline int test_bit(int idx, volatile unsigned long *bits)
 {
 	return test_bits(BITS_MASK(idx), bits + BITS_IDX(idx));
 }
+
 static inline void set_bits(unsigned long mask, volatile unsigned long *p)
 {
 	*p |= mask;
 }
+
 static inline void set_bit(int idx, volatile unsigned long *bits)
 {
 	set_bits(BITS_MASK(idx), bits + BITS_IDX(idx));
 }
+
 static inline void clear_bits(unsigned long mask, volatile unsigned long *p)
 {
 	*p &= ~mask;
 }
+
 static inline void clear_bit(int idx, volatile unsigned long *bits)
 {
 	clear_bits(BITS_MASK(idx), bits + BITS_IDX(idx));
 }
+
 static inline unsigned long test_and_set_bits(unsigned long mask,
-					volatile unsigned long *p)
+					      volatile unsigned long *p)
 {
 	unsigned long ret = test_bits(mask, p);
+
 	set_bits(mask, p);
 	return ret;
 }
+
 static inline int test_and_set_bit(int idx, volatile unsigned long *bits)
 {
 	int ret = test_bit(idx, bits);
+
 	set_bit(idx, bits);
 	return ret;
 }
+
 static inline int test_and_clear_bit(int idx, volatile unsigned long *bits)
 {
 	int ret = test_bit(idx, bits);
+
 	clear_bit(idx, bits);
 	return ret;
 }
+
 static inline int find_next_zero_bit(unsigned long *bits, int limit, int idx)
 {
 	while ((++idx < limit) && test_bit(idx, bits))
 		;
 	return idx;
 }
+
 static inline int find_first_zero_bit(unsigned long *bits, int limit)
 {
 	int idx = 0;
+
 	while (test_bit(idx, bits) && (++idx < limit))
 		;
 	return idx;

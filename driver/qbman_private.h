@@ -24,7 +24,7 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
 /* Perform extra checking */
 #define QBMAN_CHECKING
@@ -60,7 +60,10 @@
  */
 #define DBG_POLL_START(loopvar) (loopvar = 10)
 #define DBG_POLL_CHECK(loopvar) \
-	do {if (!(loopvar--)) BUG_ON(NULL == "DBG_POLL_CHECK"); } while (0)
+do { \
+	if (!(loopvar--)) \
+		BUG_ON(NULL == "DBG_POLL_CHECK"); \
+} while (0)
 
 /* For CCSR or portal-CINH registers that contain fields at arbitrary offsets
  * and widths, these macro-generated encode/decode/isolate/remove inlines can
@@ -123,12 +126,13 @@ DECLARE_CODEC32(int)
 	/*********************/
 
 static inline void __hexdump(unsigned long start, unsigned long end,
-			unsigned long p, size_t sz, const unsigned char *c)
+			     unsigned long p, size_t sz, const unsigned char *c)
 {
 	while (start < end) {
 		unsigned int pos = 0;
 		char buf[64];
 		int nl = 0;
+
 		pos += sprintf(buf + pos, "%08lx: ", start);
 		do {
 			if ((start < p) || (start >= (p + sz)))
@@ -152,12 +156,14 @@ static inline void __hexdump(unsigned long start, unsigned long end,
 		pr_info("%s", buf);
 	}
 }
+
 static inline void hexdump(const void *ptr, size_t sz)
 {
 	unsigned long p = (unsigned long)ptr;
 	unsigned long start = p & ~(unsigned long)15;
 	unsigned long end = (p + sz + 15) & ~(unsigned long)15;
 	const unsigned char *c = ptr;
+
 	__hexdump(start, end, p, sz, c);
 }
 

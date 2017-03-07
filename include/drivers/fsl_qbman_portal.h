@@ -70,7 +70,7 @@ void qbman_swp_finish(struct qbman_swp *p);
  *
  * Return the descriptor for this portal.
  */
-const struct qbman_swp_desc *qbman_swp_get_desc(struct qbman_swp *);
+const struct qbman_swp_desc *qbman_swp_get_desc(struct qbman_swp *p);
 
 	/**************/
 	/* Interrupts */
@@ -237,11 +237,11 @@ struct qbman_result {
  * if the ring has been non-empty for been longer than 'timeout' nanoseconds.
  * For timeout, an approximation to the desired nanosecond-granularity value is
  * made, so there are get and set APIs to allow the user to see what actual
- * timeout is set (compared to the timeout that was requested). */
+ * timeout is set (compared to the timeout that was requested).
+ */
 int qbman_swp_dequeue_thresh(struct qbman_swp *s, unsigned int thresh);
 int qbman_swp_dequeue_set_timeout(struct qbman_swp *s, unsigned int timeout);
 int qbman_swp_dequeue_get_timeout(struct qbman_swp *s, unsigned int *timeout);
-
 
 /* ------------------- */
 /* Push-mode dequeuing */
@@ -249,7 +249,7 @@ int qbman_swp_dequeue_get_timeout(struct qbman_swp *s, unsigned int *timeout);
 
 /* The user of a portal can enable and disable push-mode dequeuing of up to 16
  * channels independently. It does not specify this toggling by channel IDs, but
- * rather by specifing the index (from 0 to 15) that has been mapped to the
+ * rather by specifying the index (from 0 to 15) that has been mapped to the
  * desired channel.
  */
 
@@ -400,7 +400,7 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d);
  * only once, so repeated calls can return a sequence of DQRR entries, without
  * requiring they be consumed immediately or in any particular order.
  */
-const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *);
+const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *p);
 
 /**
  * qbman_swp_dqrr_consume() -  Consume DQRR entries previously returned from
@@ -464,7 +464,7 @@ int qbman_result_has_new_result(struct qbman_swp *s,
  *
  * DQRR entries may contain non-dequeue results, ie. notifications
  */
-int qbman_result_is_DQ(const struct qbman_result *);
+int qbman_result_is_DQ(const struct qbman_result *dq);
 
 /**
  * qbman_result_is_SCN() - Check the dequeue result is notification or not
@@ -533,7 +533,7 @@ int qbman_result_is_CGCU(const struct qbman_result *dq);
  *
  * Return 1 if this is FQRN.
  */
-int qbman_result_is_FQRN(const struct qbman_result *);
+int qbman_result_is_FQRN(const struct qbman_result *dq);
 
 /**
  * qbman_result_is_FQRNI() - Check for FQ Retirement Immediate
@@ -541,7 +541,7 @@ int qbman_result_is_FQRN(const struct qbman_result *);
  *
  * Return 1 if this is FQRNI.
  */
-int qbman_result_is_FQRNI(const struct qbman_result *);
+int qbman_result_is_FQRNI(const struct qbman_result *dq);
 
 /**
  * qbman_result_is_FQPN() - Check for FQ Park Notification
@@ -684,25 +684,6 @@ uint32_t qbman_result_SCN_rid(const struct qbman_result *scn);
  * Return the context.
  */
 uint64_t qbman_result_SCN_ctx(const struct qbman_result *scn);
-
-/**
- * qbman_result_SCN_state_in_mem() - Get the state in notification written
- * in memory
- * @scn: the state change notification.
- *
- * Return the state.
- */
-uint8_t qbman_result_SCN_state_in_mem(const struct qbman_result *scn);
-
-/**
- * qbman_result_SCN_rid_in_mem() - Get the resource id in notification written
- * in memory.
- * @scn: the state change notification.
- *
- * Return the resource id.
- */
-uint32_t qbman_result_SCN_rid_in_mem(const struct qbman_result *scn);
-
 
 /* Type-specific "resource IDs". Mainly for illustration purposes, though it
  * also gives the appropriate type widths.
@@ -950,7 +931,7 @@ void qbman_eq_desc_set_eqdi(struct qbman_eq_desc *d, int enable);
  * being rescheduled.)
  */
 void qbman_eq_desc_set_dca(struct qbman_eq_desc *d, int enable,
-				uint8_t dqrr_idx, int park);
+			   uint8_t dqrr_idx, int park);
 
 /**
  * qbman_swp_enqueue() - Issue an enqueue command.
@@ -1149,7 +1130,7 @@ int qbman_swp_fq_xoff(struct qbman_swp *s, uint32_t fqid);
  * Return 0 for success, or negative error code for failure.
  */
 int qbman_swp_CDAN_set_context(struct qbman_swp *s, uint16_t channelid,
-				uint64_t ctx);
+			       uint64_t ctx);
 
 /**
  * qbman_swp_CDAN_enable() - Enable CDAN for the channel.

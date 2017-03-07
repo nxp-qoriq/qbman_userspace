@@ -92,6 +92,7 @@ enum qbman_sdqcr_dct {
 	qbman_sdqcr_dct_active_ics,
 	qbman_sdqcr_dct_active
 };
+
 enum qbman_sdqcr_fc {
 	qbman_sdqcr_fc_one = 0,
 	qbman_sdqcr_fc_up_to_3 = 1
@@ -119,6 +120,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	int ret;
 	uint32_t eqcr_pi;
 	struct qbman_swp *p = kmalloc(sizeof(*p), GFP_KERNEL);
+
 	if (!p)
 		return NULL;
 	p->desc = d;
@@ -270,7 +272,7 @@ void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint8_t cmd_verb)
 {
 	uint8_t *v = cmd;
 #ifdef QBMAN_CHECKING
-	BUG_ON(!p->mc.check != swp_mc_can_submit);
+	BUG_ON(!(p->mc.check != swp_mc_can_submit));
 #endif
 	/* TBD: "|=" is going to hurt performance. Need to move as many fields
 	 * out of word zero, and for those that remain, the "OR" needs to occur
@@ -292,7 +294,7 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 	BUG_ON(p->mc.check != swp_mc_can_poll);
 #endif
 	qbman_cena_invalidate_prefetch(&p->sys,
-				QBMAN_CENA_SWP_RR(p->mc.valid_bit));
+				       QBMAN_CENA_SWP_RR(p->mc.valid_bit));
 	ret = qbman_cena_read(&p->sys, QBMAN_CENA_SWP_RR(p->mc.valid_bit));
 	/* Remove the valid-bit - command completed iff the rest is non-zero */
 	verb = ret[0] & ~QB_VALID_BIT;
@@ -415,7 +417,7 @@ void qbman_eq_desc_set_eqdi(struct qbman_eq_desc *d, int enable)
 }
 
 void qbman_eq_desc_set_dca(struct qbman_eq_desc *d, int enable,
-				uint8_t dqrr_idx, int park)
+			   uint8_t dqrr_idx, int park)
 {
 	if (enable) {
 		d->eq.dca = dqrr_idx;
@@ -434,8 +436,8 @@ void qbman_eq_desc_set_dca(struct qbman_eq_desc *d, int enable,
 #define EQAR_SUCCESS(eqar) ((eqar) & 0x100)
 
 static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
-				 const struct qbman_eq_desc *d,
-				 const struct qbman_fd *fd)
+					const struct qbman_eq_desc *d,
+					const struct qbman_fd *fd)
 {
 	uint32_t *p;
 	const uint32_t *cl = qb_cl(d);
@@ -444,25 +446,21 @@ static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 	pr_debug("EQAR=%08x\n", eqar);
 	if (!EQAR_SUCCESS(eqar))
 		return -EBUSY;
-
 	p = qbman_cena_write_start_wo_shadow(&s->sys,
-				   QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
-
+					QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
 	memcpy(&p[1], &cl[1], 28);
 	memcpy(&p[8], fd, sizeof(*fd));
-
 	/* Set the verb byte, have to substitute in the valid-bit */
 	lwsync();
 	p[0] = cl[0] | EQAR_VB(eqar);
 	qbman_cena_write_complete_wo_shadow(&s->sys,
-				  QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
-
+					QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
 	return 0;
 }
 
 static int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
-				const struct qbman_eq_desc *d,
-				const struct qbman_fd *fd)
+				       const struct qbman_eq_desc *d,
+				       const struct qbman_fd *fd)
 {
 	uint32_t *p;
 	const uint32_t *cl = qb_cl(d);
@@ -474,7 +472,7 @@ static int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & 0xF;
 		diff = qm_cyc_diff(QBMAN_EQCR_SIZE,
-				eqcr_ci, s->eqcr.ci);
+				   eqcr_ci, s->eqcr.ci);
 		s->eqcr.available += diff;
 		if (!diff)
 			return -EBUSY;
@@ -525,7 +523,7 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & 0xF;
 		diff = qm_cyc_diff(QBMAN_EQCR_SIZE,
-				eqcr_ci, s->eqcr.ci);
+				   eqcr_ci, s->eqcr.ci);
 		s->eqcr.available += diff;
 		if (!diff)
 			return 0;
@@ -538,7 +536,7 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 	/* Fill in the EQCR ring */
 	for (i = 0; i < num_enqueued; i++) {
 		p = qbman_cena_write_start_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
+					QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
 		memcpy(&p[1], &cl[1], 28);
 		memcpy(&p[8], &fd[i], sizeof(*fd));
 		eqcr_pi++;
@@ -551,7 +549,7 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 	eqcr_pi = s->eqcr.pi;
 	for (i = 0; i < num_enqueued; i++) {
 		p = qbman_cena_write_start_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
+					QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
 		p[0] = cl[0] | s->eqcr.pi_vb;
 		eqcr_pi++;
 		eqcr_pi &= 0xF;
@@ -722,7 +720,8 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 
 /* NULL return if there are no unconsumed DQRR entries. Returns a DQRR entry
  * only once, so repeated calls can return a sequence of DQRR entries, without
- * requiring they be consumed immediately or in any particular order. */
+ * requiring they be consumed immediately or in any particular order.
+ */
 const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 {
 	uint32_t verb;
@@ -758,14 +757,14 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		BUG_ON((s->dqrr.dqrr_size - 1) < 0);
 		if (s->dqrr.next_idx == (s->dqrr.dqrr_size - 1u)) {
 			pr_debug("DEBUG: next_idx=%d, pi=%d, clear reset bug\n",
-				s->dqrr.next_idx, pi);
+				 s->dqrr.next_idx, pi);
 			s->dqrr.reset_bug = 0;
 		}
 		qbman_cena_invalidate_prefetch(&s->sys,
-				QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+					QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 	}
 	p = qbman_cena_read_wo_shadow(&s->sys,
-					QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+				      QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 	verb = p->dq.verb;
 
 	/* If the valid-bit isn't of the expected polarity, nothing there. Note,
@@ -792,8 +791,8 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 	flags = p->dq.stat;
 	response_verb = verb & QMAN_RESPONSE_VERB_MASK;
 	if ((response_verb == QBMAN_RESULT_DQ) &&
-		(flags & QBMAN_DQ_STAT_VOLATILE) &&
-		(flags & QBMAN_DQ_STAT_EXPIRED))
+	    (flags & QBMAN_DQ_STAT_VOLATILE) &&
+	    (flags & QBMAN_DQ_STAT_EXPIRED))
 			atomic_inc(&s->vdq.busy);
 
 	return p;
@@ -801,7 +800,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 
 /* Consume DQRR entries previously returned from qbman_swp_dqrr_next(). */
 void qbman_swp_dqrr_consume(struct qbman_swp *s,
-					const struct qbman_result *dq)
+			    const struct qbman_result *dq)
 {
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_DCAP, QBMAN_IDX_FROM_DQRR(dq));
 }
@@ -1061,7 +1060,7 @@ int qbman_swp_release(struct qbman_swp *s, const struct qbman_release_desc *d,
 
 	/* Start the release command */
 	p = qbman_cena_write_start_wo_shadow(&s->sys,
-					QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
+					     QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
 
 	/* Copy the caller's buffer pointers to the command */
 	u64_to_le32_copy(&p[2], buffers, num_buffers);
@@ -1072,7 +1071,7 @@ int qbman_swp_release(struct qbman_swp *s, const struct qbman_release_desc *d,
 	lwsync();
 	p[0] = cl[0] | RAR_VB(rar) | num_buffers;
 	qbman_cena_write_complete_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
+					    QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
 
 	return 0;
 }
@@ -1119,8 +1118,7 @@ int qbman_swp_acquire(struct qbman_swp *s, uint16_t bpid, uint64_t *buffers,
 	/* Complete the management command */
 	r = qbman_swp_mc_complete(s, p, QBMAN_MC_ACQUIRE);
 	if (unlikely(!r)) {
-		pr_err("qbman: acquire from BPID %d failed, no response\n",
-			bpid);
+		pr_err("qbman: acquire from BPID %d failed, no response\n", bpid);
 		return -EIO;
 	}
 
@@ -1130,7 +1128,7 @@ int qbman_swp_acquire(struct qbman_swp *s, uint16_t bpid, uint64_t *buffers,
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
 		pr_err("Acquire buffers from BPID 0x%x failed, code=0x%02x\n",
-			bpid, r->rslt);
+		       bpid, r->rslt);
 		return -EIO;
 	}
 
@@ -1161,7 +1159,7 @@ struct qbman_alt_fq_state_rslt {
 #define ALT_FQ_FQID_MASK 0x00FFFFFF
 
 static int qbman_swp_alt_fq_state(struct qbman_swp *s, uint32_t fqid,
-				 uint8_t alt_fq_verb)
+				  uint8_t alt_fq_verb)
 {
 	struct qbman_alt_fq_state_desc *p;
 	struct qbman_alt_fq_state_rslt *r;
@@ -1177,7 +1175,7 @@ static int qbman_swp_alt_fq_state(struct qbman_swp *s, uint32_t fqid,
 	r = qbman_swp_mc_complete(s, p, alt_fq_verb);
 	if (unlikely(!r)) {
 		pr_err("qbman: mgmt cmd failed, no response (verb=0x%x)\n",
-			alt_fq_verb);
+		       alt_fq_verb);
 		return -EIO;
 	}
 
@@ -1324,6 +1322,5 @@ struct qbman_result *qbman_get_dqrr_from_idx(struct qbman_swp *s, uint8_t idx)
 	struct qbman_result *dq;
 
 	dq = qbman_cena_read(&s->sys, QBMAN_CENA_SWP_DQRR(idx));
-
 	return dq;
 }

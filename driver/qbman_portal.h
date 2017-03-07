@@ -55,7 +55,8 @@ static inline u8 qm_cyc_diff(u8 ringsize, u8 first, u8 last)
 struct qbman_swp {
 	const struct qbman_swp_desc *desc;
 	/* The qbman_sys (ie. arch/OS-specific) support code can put anything it
-	 * needs in here. */
+	 * needs in here.
+	 */
 	struct qbman_swp_sys sys;
 	/* Management commands */
 	struct {
@@ -82,14 +83,16 @@ struct qbman_swp {
 		 * to whether or not a command can be submitted, not whether or
 		 * not a previously-submitted command is still executing. In
 		 * other words, once proof is seen that the previously-submitted
-		 * command is executing, "vdq" is no longer "busy". */
+		 * command is executing, "vdq" is no longer "busy".
+		 */
 		atomic_t busy;
 		uint32_t valid_bit; /* 0x00 or 0x80 */
 		/* We need to determine when vdq is no longer busy. This depends
 		 * on whether the "busy" (last-submitted) dequeue command is
-		 * targetting DQRR or main-memory, and detected is based on the
+		 * targeting DQRR or main-memory, and detected is based on the
 		 * presence of the dequeue command's "token" showing up in
-		 * dequeue entries in DQRR or main-memory (respectively). */
+		 * dequeue entries in DQRR or main-memory (respectively).
+		 */
 		struct qbman_result *storage; /* NULL if DQRR */
 	} vdq;
 	/* DQRR */
@@ -117,7 +120,8 @@ struct qbman_swp {
  * verb byte), the second function commits merges in the caller-supplied command
  * verb (which should not include the valid-bit) and submits the command to
  * hardware, and the third function checks for a completed response (returns
- * non-NULL if only if the response is complete). */
+ * non-NULL if only if the response is complete).
+ */
 void *qbman_swp_mc_start(struct qbman_swp *p);
 void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint8_t cmd_verb);
 void *qbman_swp_mc_result(struct qbman_swp *p);
@@ -127,6 +131,7 @@ static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
 					  uint8_t cmd_verb)
 {
 	int loopvar;
+
 	qbman_swp_mc_submit(swp, cmd, cmd_verb);
 	DBG_POLL_START(loopvar);
 	do {
@@ -175,6 +180,7 @@ static inline void qb_attr_code_rotate_ms(struct qb_attr_code *code,
 		code->lsoffset -= 32;
 	}
 }
+
 static inline void qb_attr_code_rotate_ls(struct qb_attr_code *code,
 					  unsigned int bits)
 {
@@ -192,6 +198,7 @@ static inline void qb_attr_code_rotate_ls(struct qb_attr_code *code,
 		code->lsoffset += 32;
 	}
 }
+
 /* Implement a loop of code rotations until 'expr' evaluates to FALSE (0). */
 #define qb_attr_code_for_ms(code, bits, expr) \
 		for (; expr; qb_attr_code_rotate_ms(code, bits))
@@ -200,12 +207,13 @@ static inline void qb_attr_code_rotate_ls(struct qb_attr_code *code,
 
 /* decode a field from a cacheline */
 static inline uint32_t qb_attr_code_decode(const struct qb_attr_code *code,
-				      const uint32_t *cacheline)
+					   const uint32_t *cacheline)
 {
 	return d32_uint32_t(code->lsoffset, code->width, cacheline[code->word]);
 }
+
 static inline uint64_t qb_attr_code_decode_64(const struct qb_attr_code *code,
-				      const uint64_t *cacheline)
+					      const uint64_t *cacheline)
 {
 	return cacheline[code->word / 2];
 }
@@ -218,8 +226,9 @@ static inline void qb_attr_code_encode(const struct qb_attr_code *code,
 		r32_uint32_t(code->lsoffset, code->width, cacheline[code->word])
 		| e32_uint32_t(code->lsoffset, code->width, val);
 }
+
 static inline void qb_attr_code_encode_64(const struct qb_attr_code *code,
-				       uint64_t *cacheline, uint64_t val)
+					  uint64_t *cacheline, uint64_t val)
 {
 	cacheline[code->word / 2] = val;
 }
@@ -232,12 +241,13 @@ static inline void qb_attr_code_encode_64(const struct qb_attr_code *code,
  * encoding, will become 0xfffffff9 if you cast the return value to uint32_t).
  */
 static inline int32_t qb_attr_code_makesigned(const struct qb_attr_code *code,
-					  uint32_t val)
+					      uint32_t val)
 {
 	BUG_ON(val >= (1u << code->width));
 	/* code->width should never exceed the width of val. If it does then a
 	 * different function with larger val size must be used to translate
-	 * from unsigned to signed */
+	 * from unsigned to signed
+	 */
 	BUG_ON(code->width > sizeof(val) * CHAR_BIT);
 	/* If the high bit was set, it was encoding a negative */
 	if (val >= 1u << (code->width - 1))
@@ -255,7 +265,7 @@ static inline int32_t qb_attr_code_makesigned(const struct qb_attr_code *code,
  * a "descriptor" type that the caller can instantiate however they like.
  * Ultimately though, it is just a cacheline of binary storage (or something
  * smaller when it is known that the descriptor doesn't need all 64 bytes) for
- * holding pre-formatted pieces of harware commands. The performance-critical
+ * holding pre-formatted pieces of hardware commands. The performance-critical
  * code can then copy these descriptors directly into hardware command
  * registers more efficiently than trying to construct/format commands
  * on-the-fly. The API user sees the descriptor as an array of 32-bit words in

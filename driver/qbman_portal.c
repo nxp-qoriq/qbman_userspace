@@ -449,8 +449,8 @@ static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 		return -EBUSY;
 	p = qbman_cena_write_start_wo_shadow(&s->sys,
 				   QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
-	word_copy(&p[1], &cl[1], 7);
-	word_copy(&p[8], fd, sizeof(*fd) >> 2);
+	memcpy(&p[1], &cl[1], 28);
+	memcpy(&p[8], fd, sizeof(*fd));
 	/* Set the verb byte, have to substitute in the valid-bit */
 	lwsync();
 	p[0] = cl[0] | EQAR_VB(eqar);
@@ -481,8 +481,8 @@ static int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
 
 	p = qbman_cena_write_start_wo_shadow(&s->sys,
 					QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7));
-	word_copy(&p[1], &cl[1], 7);
-	word_copy(&p[8], fd, sizeof(*fd) >> 2);
+	memcpy(&p[1], &cl[1], 28);
+	memcpy(&p[8], fd, sizeof(*fd));
 	lwsync();
 	/* Set the verb byte, have to substitute in the valid-bit */
 	p[0] = cl[0] | s->eqcr.pi_vb;
@@ -626,7 +626,7 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 	s->vdq.storage = *(void **)&cl[4];
 	qb_attr_code_encode(&code_pull_token, cl, 1);
 	p = qbman_cena_write_start_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
-	word_copy(&p[1], &cl[1], 3);
+	memcpy(&p[1], &cl[1], 12);
 	/* Set the verb byte, have to substitute in the valid-bit */
 	lwsync();
 	p[0] = cl[0] | s->vdq.valid_bit;

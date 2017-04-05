@@ -43,14 +43,6 @@
 #undef QBMAN_CINH_TRACE
 #undef QBMAN_CENA_TRACE
 
-static inline void word_copy(void *d, const void *s, unsigned int cnt)
-{
-	uint32_t *dd = d;
-	const uint32_t *ss = s;
-	while (cnt--)
-		*(dd++) = *(ss++);
-}
-
 /* Currently, the CENA support code expects each 32-bit word to be written in
  * host order, and these are converted to hardware (little-endian) order on
  * command submission. However, 64-bit quantities are must be written (and read)
@@ -105,10 +97,6 @@ static inline uint32_t make_le24(uint32_t val)
 	return (((val & 0xff) << 16) | (val & 0xff00) |
 		((val & 0xff0000) >> 16));
 }
-#else
-#define make_le32(val) (val)
-#define make_le24(val) (val)
-#endif
 static inline void make_le32_n(uint32_t *val, unsigned int num)
 {
 	while (num--) {
@@ -116,6 +104,12 @@ static inline void make_le32_n(uint32_t *val, unsigned int num)
 		val++;
 	}
 }
+#else
+#define make_le32(val) (val)
+#define make_le24(val) (val)
+#define make_le32_n(val, len) do {} while (0)
+#endif
+
 
 	/******************/
 	/* Portal access  */

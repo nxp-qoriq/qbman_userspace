@@ -37,6 +37,8 @@
 #define QBMAN_CGR_STAT_QUERY      0x55
 #define QBMAN_CGR_STAT_QUERY_CLR  0x56
 
+#define QBMAN_QUERY_RESPONSE_LEN  60
+
 enum qbman_attr_usage_e {
 	qbman_attr_usage_fq,
 	qbman_attr_usage_bpool,
@@ -123,7 +125,7 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 	/* For the query, word[0] of the result contains only the
 	 * verb/rslt fields, so skip word[0].
 	 */
-	word_copy(&attr[1], &p[1], 15);
+	memcpy(&attr[1], &p[1], QBMAN_QUERY_RESPONSE_LEN);
 	return 0;
 }
 
@@ -338,7 +340,7 @@ int qbman_fq_query(struct qbman_swp *s, uint32_t fqid, struct qbman_attr *desc)
 	/* For the configure, word[0] of the command contains only the WE-mask.
 	 * For the query, word[0] of the result contains only the verb/rslt
 	 * fields. Skip word[0] in the latter case. */
-	word_copy(&d[1], &p[1], 15);
+	memcpy(&d[1], &p[1], QBMAN_QUERY_RESPONSE_LEN);
 	return 0;
 }
 
@@ -475,7 +477,7 @@ int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
 		       fqid, rslt);
 		return -EIO;
 	}
-	word_copy(&d[0], &p[0], 16);
+	memcpy(&d[0], &p[0], QBMAN_QUERY_RESPONSE_LEN + 4);
 	return 0;
 }
 
@@ -600,7 +602,7 @@ int qbman_cgr_query(struct qbman_swp *s, uint32_t cgid, struct qbman_attr *attr)
 		 * verb/cgid. For the query, word[0] of the result contains
 		 * only the verb/rslt fields. Skip word[0] in the latter case.
 		 */
-		word_copy(&d[i][1], &p[1], 15);
+		memcpy(&d[i][1], &p[1], QBMAN_QUERY_RESPONSE_LEN);
 	}
 	return 0;
 }
@@ -885,7 +887,7 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 	/* For the query, word[0] of the result contains only the
 	 * verb/rslt fields, so skip word[0].
 	 */
-	word_copy(&attr[1], &p[1], 15);
+	memcpy(&attr[1], &p[1], QBMAN_QUERY_RESPONSE_LEN);
 	return 0;
 }
 

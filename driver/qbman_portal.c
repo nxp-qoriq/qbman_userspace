@@ -536,7 +536,7 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 		p = qbman_cena_write_start_wo_shadow(&s->sys,
 				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
 		memcpy(&p[1], &cl[1], 28);
-		memcpy(&p[8], &fd[num_enqueued], sizeof(*fd));
+		memcpy(&p[8], &fd[i], sizeof(*fd));
 		eqcr_pi++;
 		eqcr_pi &= 0xF;
 	}

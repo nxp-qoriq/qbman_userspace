@@ -39,6 +39,9 @@
 
 #define QBMAN_QUERY_RESPONSE_LEN  60
 
+struct qb_attr_code code_generic_verb = QB_CODE(0, 0, 7);
+struct qb_attr_code code_generic_rslt = QB_CODE(0, 8, 8);
+
 enum qbman_attr_usage_e {
 	qbman_attr_usage_fq,
 	qbman_attr_usage_bpool,

@@ -514,7 +514,8 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 	const uint32_t *cl = qb_cl(d);
 	uint32_t eqcr_ci, eqcr_pi;
 	uint8_t diff;
-	int i, num_enqueued;
+	int i, num_enqueued = 0;
+	uint64_t addr_cena;
 
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
@@ -524,7 +525,7 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 				eqcr_ci, s->eqcr.ci);
 		s->eqcr.available += diff;
 		if (!diff)
-			return -EBUSY;
+			return 0;
 	}
 
 	eqcr_pi = s->eqcr.pi;
@@ -555,11 +556,15 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 	}
 
 	/* Flush all the cacheline without load/store in between */
+	eqcr_pi = s->eqcr.pi;
+	addr_cena = (uint64_t)s->sys.addr_cena;
 	for (i = 0; i < num_enqueued; i++) {
-		dcbf(s->sys.addr_cena +	QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7));
-		s->eqcr.pi++;
-		s->eqcr.pi &= 0xF;
+		dcbf((uint64_t *)(addr_cena +
+				QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7)));
+		eqcr_pi++;
+		eqcr_pi &= 0xF;
 	}
+	s->eqcr.pi = eqcr_pi;
 
 	return num_enqueued;
 }

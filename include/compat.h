@@ -1,4 +1,7 @@
-/* Copyright (c) 2008-2011 Freescale Semiconductor, Inc.
+/*-
+ *   BSD LICENSE
+ *
+ * Copyright (c) 2008-2016 Freescale Semiconductor, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

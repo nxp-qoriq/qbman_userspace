@@ -1,4 +1,7 @@
-/* Copyright (C) 2014 Freescale Semiconductor, Inc.
+/*-
+ *   BSD LICENSE
+ *
+ * Copyright (C) 2014 Freescale Semiconductor, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:

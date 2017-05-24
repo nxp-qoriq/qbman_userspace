@@ -561,7 +561,7 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 	addr_cena = (uint64_t)s->sys.addr_cena;
 	for (i = 0; i < num_enqueued; i++) {
 		dcbf((uint64_t *)(addr_cena +
-				QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7)));
+				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7)));
 		eqcr_pi++;
 		eqcr_pi &= 0xF;
 	}

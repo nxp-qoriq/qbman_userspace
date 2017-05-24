@@ -98,6 +98,13 @@ enum qbman_sdqcr_fc {
 	qbman_sdqcr_fc_up_to_3 = 1
 };
 
+/* We need to keep track of which SWP triggered a pull command
+ * so keep an array of portal IDs and use the token field to
+ * be able to find the proper portal
+ */
+#define MAX_QBMAN_PORTALS  64
+static struct qbman_swp *portal_idx_map[MAX_QBMAN_PORTALS];
+
 /*********************************/
 /* Portal constructor/destructor */
 /*********************************/
@@ -123,7 +130,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 
 	if (!p)
 		return NULL;
-	p->desc = d;
+	p->desc = *d;
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_start;
 #endif
@@ -137,7 +144,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	p->vdq.valid_bit = QB_VALID_BIT;
 	p->dqrr.next_idx = 0;
 	p->dqrr.valid_bit = QB_VALID_BIT;
-	qman_version = p->desc->qman_version;
+	qman_version = p->desc.qman_version;
 	if ((qman_version & 0xFFFF0000) < QMAN_REV_4100) {
 		p->dqrr.dqrr_size = 4;
 		p->dqrr.reset_bug = 1;
@@ -165,6 +172,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	p->eqcr.available = QBMAN_EQCR_SIZE - qm_cyc_diff(QBMAN_EQCR_SIZE,
 						p->eqcr.ci, p->eqcr.pi);
 
+	portal_idx_map[p->desc.idx] = p;
 	return p;
 }
 
@@ -174,12 +182,13 @@ void qbman_swp_finish(struct qbman_swp *p)
 	BUG_ON(p->mc.check != swp_mc_can_start);
 #endif
 	qbman_swp_sys_finish(&p->sys);
+	portal_idx_map[p->desc.idx] = NULL;
 	kfree(p);
 }
 
 const struct qbman_swp_desc *qbman_swp_get_desc(struct qbman_swp *p)
 {
-	return p->desc;
+	return &p->desc;
 }
 
 /**************/
@@ -687,7 +696,7 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 		return -EBUSY;
 	}
 
-	d->pull.tok = 1;
+	d->pull.tok = s->sys.idx + 1;
 	s->vdq.storage = (void *)d->pull.rsp_addr_virt;
 	p = qbman_cena_write_start_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
 	memcpy(&p[1], &cl[1], 12);
@@ -812,7 +821,7 @@ void qbman_swp_dqrr_consume(struct qbman_swp *s,
 int qbman_result_has_new_result(struct qbman_swp *s,
 				struct qbman_result *dq)
 {
-	if (dq->dq.tok != 1)
+	if (dq->dq.tok == 0)
 		return 0;
 
 	/*
@@ -822,6 +831,43 @@ int qbman_result_has_new_result(struct qbman_swp *s,
 	 */
 	((struct qbman_result *)dq)->dq.tok = 0;
 
+	/*
+	 * VDQCR "no longer busy" hook - not quite the same as DQRR, because the
+	 * fact "VDQCR" shows busy doesn't mean that we hold the result that
+	 * makes it available. Eg. we may be looking at our 10th dequeue result,
+	 * having released VDQCR after the 1st result and it is now busy due to
+	 * some other command!
+	 */
+	if (s->vdq.storage == dq) {
+		s->vdq.storage = NULL;
+		atomic_inc(&s->vdq.busy);
+	}
+
+	return 1;
+}
+
+int qbman_check_new_result(struct qbman_result *dq)
+{
+	if (dq->dq.tok == 0)
+		return 0;
+
+	/*
+	 * Set token to be 0 so we will detect change back to 1
+	 * next time the looping is traversed. Const is cast away here
+	 * as we want users to treat the dequeue responses as read only.
+	 */
+	((struct qbman_result *)dq)->dq.tok = 0;
+
+	return 1;
+}
+
+int qbman_check_command_complete(struct qbman_result *dq)
+{
+	struct qbman_swp *s;
+	if (dq->dq.tok == 0)
+		return 0;
+
+	s = portal_idx_map[dq->dq.tok - 1];
 	/*
 	 * VDQCR "no longer busy" hook - not quite the same as DQRR, because the
 	 * fact "VDQCR" shows busy doesn't mean that we hold the result that

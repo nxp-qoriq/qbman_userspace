@@ -454,6 +454,19 @@ struct qbman_result *qbman_get_dqrr_from_idx(struct qbman_swp *s, uint8_t idx);
 int qbman_result_has_new_result(struct qbman_swp *s,
 				struct qbman_result *dq);
 
+/**
+ * qbman_check_command_complete() - Check if the previous issued dq commnd
+ * is completed and results are available in memory.
+ * @s: the software portal object.
+ * @dq: the dequeue result read from the memory.
+ *
+ * Return 1 for getting a valid dequeue result, or 0 for not getting a valid
+ * dequeue result.
+ */
+int qbman_check_command_complete(struct qbman_result *dq);
+
+int qbman_check_new_result(struct qbman_result *dq);
+
 /* -------------------------------------------------------- */
 /* Parsing dequeue entries (DQRR and user-provided storage) */
 /* -------------------------------------------------------- */

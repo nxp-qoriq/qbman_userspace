@@ -53,7 +53,7 @@ static inline u8 qm_cyc_diff(u8 ringsize, u8 first, u8 last)
 /* --------------------- */
 
 struct qbman_swp {
-	const struct qbman_swp_desc *desc;
+	struct qbman_swp_desc desc;
 	/* The qbman_sys (ie. arch/OS-specific) support code can put anything it
 	 * needs in here.
 	 */

@@ -29,6 +29,7 @@
 #define _FSL_QBMAN_PORTAL_H
 
 #include <fsl_qbman_base.h>
+#include <linux/types.h>
 
 /**
  * DOC - QBMan portal APIs to implement the following functions:

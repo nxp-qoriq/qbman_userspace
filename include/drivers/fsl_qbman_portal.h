@@ -796,7 +796,6 @@ struct qbman_eq_desc {
 			uint8_t wae;
 			uint8_t rspid;
 			uint64_t rsp_addr;
-			uint8_t fd[32];
 		} eq;
 	};
 };

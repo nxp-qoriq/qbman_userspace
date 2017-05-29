@@ -53,16 +53,6 @@
 #define __always_unused	__attribute__((unused))
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
-#define ____cacheline_aligned __attribute__((aligned(L1_CACHE_BYTES)))
-#define container_of(p, t, f) (t *)((void *)p - offsetof(t, f))
-#define __stringify_1(x) #x
-#define __stringify(x)	__stringify_1(x)
-#define panic(x) \
-do { \
-	printf("panic: %s", x); \
-	abort(); \
-} while (0)
-
 
 /* Required types */
 typedef uint64_t	dma_addr_t;
@@ -107,9 +97,6 @@ do { \
 		warned_##__LINE__ = 1; \
 	} \
 } while (0)
-
-#define ALIGN(x, a) (((x) + ((typeof(x))(a) - 1)) & ~((typeof(x))(a) - 1))
-
 
 /* Other miscellaneous interfaces our APIs depend on; */
 

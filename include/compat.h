@@ -30,31 +30,15 @@
 #ifndef HEADER_COMPAT_H
 #define HEADER_COMPAT_H
 
-#include <sched.h>
-
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 #include <stdint.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include <errno.h>
 #include <string.h>
-#include <pthread.h>
-#include <net/ethernet.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <ctype.h>
 #include <malloc.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <unistd.h>
-#include <sys/mman.h>
-#include <limits.h>
-#include <assert.h>
-#include <dirent.h>
-#include <inttypes.h>
 #include <error.h>
 #include <linux/types.h>
 

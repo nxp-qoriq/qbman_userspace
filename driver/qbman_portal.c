@@ -126,7 +126,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 {
 	int ret;
 	uint32_t eqcr_pi;
-	struct qbman_swp *p = kmalloc(sizeof(*p), GFP_KERNEL);
+	struct qbman_swp *p = malloc(sizeof(*p));
 
 	if (!p)
 		return NULL;
@@ -155,7 +155,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 
 	ret = qbman_swp_sys_init(&p->sys, d, p->dqrr.dqrr_size);
 	if (ret) {
-		kfree(p);
+		free(p);
 		pr_err("qbman_swp_sys_init() failed %d\n", ret);
 		return NULL;
 	}
@@ -183,7 +183,7 @@ void qbman_swp_finish(struct qbman_swp *p)
 #endif
 	qbman_swp_sys_finish(&p->sys);
 	portal_idx_map[p->desc.idx] = NULL;
-	kfree(p);
+	free(p);
 }
 
 const struct qbman_swp_desc *qbman_swp_get_desc(struct qbman_swp *p)

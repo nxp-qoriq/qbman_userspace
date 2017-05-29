@@ -103,13 +103,8 @@ do { \
 #define lower_32_bits(x) ((uint32_t)(x))
 #define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
 
-/* Compiler/type stuff */
-typedef unsigned int	gfp_t;
-typedef uint32_t	phandle;
 
 #define __iomem
-
-#define GFP_KERNEL	0
 
 #define __raw_readb(p)	(*(const volatile unsigned char *)(p))
 #define __raw_readl(p)	(*(const volatile unsigned int *)(p))
@@ -117,34 +112,6 @@ typedef uint32_t	phandle;
 
 /* printk() stuff */
 #define printk(fmt, args...)	do_not_use_printk
-
-/* Allocator stuff */
-#define kmalloc(sz, t)	malloc(sz)
-#define vmalloc(sz)	malloc(sz)
-#define kfree(p)	{ if (p) free(p); }
-static inline void *kzalloc(size_t sz, gfp_t __foo __always_unused)
-{
-	void *ptr = malloc(sz);
-
-	if (ptr)
-		memset(ptr, 0, sz);
-	return ptr;
-}
-
-static inline unsigned long get_zeroed_page(gfp_t __foo __always_unused)
-{
-	void *p;
-
-	if (posix_memalign(&p, 4096, 4096))
-		return 0;
-	memset(p, 0, 4096);
-	return (unsigned long)p;
-}
-
-static inline void free_page(unsigned long p)
-{
-	free((void *)p);
-}
 
 #define dmb(opt) { asm volatile("dmb " #opt : : : "memory"); }
 #define smp_mb() dmb(ish)

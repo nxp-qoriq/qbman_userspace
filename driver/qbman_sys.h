@@ -321,7 +321,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	s->addr_cena = d->cena_bar;
 	s->addr_cinh = d->cinh_bar;
 	s->idx = (uint32_t)d->idx;
-	s->cena = (void *)get_zeroed_page(GFP_KERNEL);
+	s->cena = malloc(4096);
 	if (!s->cena) {
 		pr_err("Could not allocate page for cena shadow\n");
 		return -1;
@@ -346,7 +346,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {
 		pr_err("The portal %d is not enabled!\n", s->idx);
-		kfree(s->cena);
+		free(s->cena);
 		return -1;
 	}
 	return 0;
@@ -354,5 +354,5 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 
 static inline void qbman_swp_sys_finish(struct qbman_swp_sys *s)
 {
-	free_page((unsigned long)s->cena);
+	free(s->cena);
 }

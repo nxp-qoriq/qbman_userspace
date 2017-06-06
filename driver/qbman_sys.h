@@ -40,12 +40,60 @@
  * *not* to provide linux compatibility.
  */
 
+#include "qbman_sys_decl.h"
+
 /* Trace the 3 different classes of read/write access to QBMan. #undef as
  * required.
  */
 #undef QBMAN_CCSR_TRACE
 #undef QBMAN_CINH_TRACE
 #undef QBMAN_CENA_TRACE
+
+        /*********************/
+        /* Debugging assists */
+        /*********************/
+
+static inline void __hexdump(unsigned long start, unsigned long end,
+			     unsigned long p, size_t sz, const unsigned char *c)
+{
+	while (start < end) {
+		unsigned int pos = 0;
+		char buf[64];
+		int nl = 0;
+
+		pos += sprintf(buf + pos, "%08lx: ", start);
+		do {
+			if ((start < p) || (start >= (p + sz)))
+				pos += sprintf(buf + pos, "..");
+			else
+				pos += sprintf(buf + pos, "%02x", *(c++));
+			if (!(++start & 15)) {
+				buf[pos++] = '\n';
+				nl = 1;
+			} else {
+				nl = 0;
+				if (!(start & 1))
+					buf[pos++] = ' ';
+				if (!(start & 3))
+					buf[pos++] = ' ';
+			}
+		} while (start & 15);
+		if (!nl)
+			buf[pos++] = '\n';
+		buf[pos] = '\0';
+		pr_info("%s", buf);
+	}
+}
+
+static inline void hexdump(const void *ptr, size_t sz)
+{
+	unsigned long p = (unsigned long)ptr;
+	unsigned long start = p & ~(unsigned long)15;
+	unsigned long end = (p + sz + 15) & ~(unsigned long)15;
+	const unsigned char *c = ptr;
+
+	__hexdump(start, end, p, sz, c);
+}
 
 /* Currently, the CENA support code expects each 32-bit word to be written in
  * host order, and these are converted to hardware (little-endian) order on

@@ -197,7 +197,7 @@ static inline void *qbman_cena_write_start(struct qbman_swp_sys *s,
 	pr_info("qbman_cena_write_start(%p:%d:0x%03x) %p\n",
 		s->addr_cena, s->idx, offset, shadow);
 #endif
-	BUG_ON(offset & 63);
+	QBMAN_BUG_ON(offset & 63);
 	dcbz(shadow);
 	return shadow;
 }
@@ -209,7 +209,7 @@ static inline void *qbman_cena_write_start_wo_shadow(struct qbman_swp_sys *s,
 	pr_info("qbman_cena_write_start(%p:%d:0x%03x)\n",
 		s->addr_cena, s->idx, offset);
 #endif
-	BUG_ON(offset & 63);
+	QBMAN_BUG_ON(offset & 63);
 	return (s->addr_cena + offset);
 }
 
@@ -354,14 +354,14 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 		return -1;
 	}
 	s->eqcr_mode = d->eqcr_mode;
-	BUG_ON(d->idx < 0);
+	QBMAN_BUG_ON(d->idx < 0);
 #ifdef QBMAN_CHECKING
 	/* We should never be asked to initialise for a portal that isn't in
 	 * the power-on state. (Ie. don't forget to reset portals when they are
 	 * decommissioned!)
 	 */
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
-	BUG_ON(reg);
+	QBMAN_BUG_ON(reg);
 #endif
 	if (s->eqcr_mode == qman_eqcr_vb_array)
 		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1,

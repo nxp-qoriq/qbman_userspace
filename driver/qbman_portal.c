@@ -179,7 +179,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 void qbman_swp_finish(struct qbman_swp *p)
 {
 #ifdef QBMAN_CHECKING
-	BUG_ON(p->mc.check != swp_mc_can_start);
+	QBMAN_BUG_ON(p->mc.check != swp_mc_can_start);
 #endif
 	qbman_swp_sys_finish(&p->sys);
 	portal_idx_map[p->desc.idx] = NULL;
@@ -267,7 +267,7 @@ void *qbman_swp_mc_start(struct qbman_swp *p)
 {
 	void *ret;
 #ifdef QBMAN_CHECKING
-	BUG_ON(p->mc.check != swp_mc_can_start);
+	QBMAN_BUG_ON(p->mc.check != swp_mc_can_start);
 #endif
 	ret = qbman_cena_write_start(&p->sys, QBMAN_CENA_SWP_CR);
 #ifdef QBMAN_CHECKING
@@ -281,14 +281,14 @@ void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint8_t cmd_verb)
 {
 	uint8_t *v = cmd;
 #ifdef QBMAN_CHECKING
-	BUG_ON(!(p->mc.check != swp_mc_can_submit));
+	QBMAN_BUG_ON(!(p->mc.check != swp_mc_can_submit));
 #endif
 	/* TBD: "|=" is going to hurt performance. Need to move as many fields
 	 * out of word zero, and for those that remain, the "OR" needs to occur
 	 * at the caller side. This debug check helps to catch cases where the
 	 * caller wants to OR but has forgotten to do so.
 	 */
-	BUG_ON((*v & cmd_verb) != *v);
+	QBMAN_BUG_ON((*v & cmd_verb) != *v);
 	*v = cmd_verb | p->mc.valid_bit;
 	qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR, cmd);
 #ifdef QBMAN_CHECKING
@@ -300,7 +300,7 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 {
 	uint32_t *ret, verb;
 #ifdef QBMAN_CHECKING
-	BUG_ON(p->mc.check != swp_mc_can_poll);
+	QBMAN_BUG_ON(p->mc.check != swp_mc_can_poll);
 #endif
 	qbman_cena_invalidate_prefetch(&p->sys,
 				       QBMAN_CENA_SWP_RR(p->mc.valid_bit));
@@ -655,7 +655,7 @@ void qbman_swp_push_get(struct qbman_swp *s, uint8_t channel_idx, int *enabled)
 {
 	uint16_t src = (s->sdq >> QB_SDQCR_SRC_SHIFT) & QB_SDQCR_SRC_MASK;
 
-	BUG_ON(channel_idx > 15);
+	QBMAN_BUG_ON(channel_idx > 15);
 	*enabled = src | (1 << channel_idx);
 }
 
@@ -663,7 +663,7 @@ void qbman_swp_push_set(struct qbman_swp *s, uint8_t channel_idx, int enable)
 {
 	uint16_t dqsrc;
 
-	BUG_ON(channel_idx > 15);
+	QBMAN_BUG_ON(channel_idx > 15);
 	if (enable)
 		s->sdq |= 1 << channel_idx;
 	else
@@ -830,7 +830,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		 * (which increments one at a time), rather than on pi (which
 		 * can burst and wrap-around between our snapshots of it).
 		 */
-		BUG_ON((s->dqrr.dqrr_size - 1) < 0);
+		QBMAN_BUG_ON((s->dqrr.dqrr_size - 1) < 0);
 		if (s->dqrr.next_idx == (s->dqrr.dqrr_size - 1u)) {
 			pr_debug("DEBUG: next_idx=%d, pi=%d, clear reset bug\n",
 				 s->dqrr.next_idx, pi);
@@ -1153,7 +1153,7 @@ int qbman_swp_release(struct qbman_swp *s, const struct qbman_release_desc *d,
 	if (!RAR_SUCCESS(rar))
 		return -EBUSY;
 
-	BUG_ON(!num_buffers || (num_buffers > 7));
+	QBMAN_BUG_ON(!num_buffers || (num_buffers > 7));
 
 	/* Start the release command */
 	p = qbman_cena_write_start_wo_shadow(&s->sys,
@@ -1220,7 +1220,7 @@ int qbman_swp_acquire(struct qbman_swp *s, uint16_t bpid, uint64_t *buffers,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_MC_ACQUIRE);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_MC_ACQUIRE);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -1229,7 +1229,7 @@ int qbman_swp_acquire(struct qbman_swp *s, uint16_t bpid, uint64_t *buffers,
 		return -EIO;
 	}
 
-	BUG_ON(r->num > num_buffers);
+	QBMAN_BUG_ON(r->num > num_buffers);
 
 	/* Copy the acquired buffers to the caller's array */
 	u64_from_le32_copy(buffers, &r->buf[0], r->num);
@@ -1277,7 +1277,7 @@ static int qbman_swp_alt_fq_state(struct qbman_swp *s, uint32_t fqid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != alt_fq_verb);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != alt_fq_verb);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -1367,7 +1367,7 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WQCHAN_CONFIGURE);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WQCHAN_CONFIGURE);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {

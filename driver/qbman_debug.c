@@ -73,7 +73,7 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_BP_QUERY);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_BP_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -234,7 +234,7 @@ int qbman_fq_query(struct qbman_swp *s, uint32_t fqid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -355,7 +355,7 @@ int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY_NP);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY_NP);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -428,7 +428,7 @@ int qbman_cgr_query(struct qbman_swp *s, uint32_t cgid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_CGR_QUERY);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_CGR_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -502,7 +502,7 @@ int qbman_cgr_wred_query(struct qbman_swp *s, uint32_t cgid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WRED_QUERY);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WRED_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -593,7 +593,7 @@ static int qbman_cgr_statistics_query(struct qbman_swp *s, uint32_t cgid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != query_verb);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != query_verb);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
@@ -661,7 +661,7 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 	}
 
 	/* Decode the outcome */
-	BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WQ_QUERY);
+	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WQ_QUERY);
 
 	/* Determine success or failure */
 	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {

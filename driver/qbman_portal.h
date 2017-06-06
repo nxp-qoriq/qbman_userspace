@@ -141,7 +141,7 @@ static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
 	do {
 		cmd = qbman_swp_mc_result(swp);
 	} while (!cmd && loopvar--);
-	WARN_ON(!loopvar, "mc complete timeout");
+	QBMAN_BUG_ON(!loopvar);
 
 	return cmd;
 }

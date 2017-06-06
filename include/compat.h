@@ -74,7 +74,7 @@ typedef uint64_t	dma_addr_t;
 #undef pr_debug
 #endif
 #define pr_debug(fmt, args...)	printf(fmt, ##args)
-#define BUG_ON(c) \
+#define QBMAN_BUG_ON(c) \
 do { \
 	if (c) { \
 		pr_crit("BUG: %s:%d\n", __FILE__, __LINE__); \
@@ -86,17 +86,8 @@ do { \
 #undef pr_debug
 #endif
 #define pr_debug(fmt, args...) {}
-#define BUG_ON(c)		do { ; } while(0)
+#define QBMAN_BUG_ON(c)		do { ; } while(0)
 #endif
-#define WARN_ON(c, str) \
-do { \
-	static int warned_##__LINE__; \
-	if ((c) && !warned_##__LINE__) { \
-		pr_warning("%s\n", str); \
-		pr_warning("(%s:%d)\n", __FILE__, __LINE__); \
-		warned_##__LINE__ = 1; \
-	} \
-} while (0)
 
 /* Other miscellaneous interfaces our APIs depend on; */
 

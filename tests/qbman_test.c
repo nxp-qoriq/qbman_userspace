@@ -29,8 +29,8 @@
 #include <sys/ioctl.h>
 #include "../driver/qbman_debug.h"
 
-#undef BUG_ON
-#define BUG_ON(x) if (x) pr_err("BUG hit. Line %d, condition %s", __LINE__, #x)
+#undef QBMAN_BUG_ON
+#define QBMAN_BUG_ON(x) if (x) pr_err("BUG hit. Line %d, condition %s", __LINE__, #x)
 
 #define EQ_DQ_CYCLE_TEST
 /* Define this while testing VDQ to memory in cycle test */
@@ -268,7 +268,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
 
 		ret = qbman_swp_pull(p, &pulldesc);
-		BUG_ON(ret);
+		QBMAN_BUG_ON(ret);
 		do {
 			dq_storage1 = qbman_swp_dqrr_next(p);
 		} while (!dq_storage1);
@@ -298,7 +298,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 		qbman_pull_desc_set_numframes(&pulldesc, 1);
 		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
 		ret = qbman_swp_pull(p, &pulldesc);
-		BUG_ON(ret);
+		QBMAN_BUG_ON(ret);
 		do {
 			ret = qbman_result_has_new_result(p, dq_storage);
 		} while (!ret);
@@ -323,7 +323,7 @@ static void release_buffer(struct qbman_swp *p __maybe_unused)
 	qbman_release_desc_set_bpid(&releasedesc, QBMAN_TEST_BPID);
 	pr_info("*****QBMan_test: Release buffer to BP %d\n",
 					QBMAN_TEST_BPID);
-	BUG_ON(qbman_swp_release(p, &releasedesc, &rbufs[0],
+	QBMAN_BUG_ON(qbman_swp_release(p, &releasedesc, &rbufs[0],
 					ARRAY_SIZE(rbufs)));
 }
 
@@ -331,7 +331,7 @@ static void acquire_buffer(struct qbman_swp *p __maybe_unused)
 {
 	pr_info("*****QBMan_test: Acquire buffer from BP %d\n",
 					QBMAN_TEST_BPID);
-	BUG_ON(qbman_swp_acquire(p, QBMAN_TEST_BPID, &abufs[0], 2) != 2);
+	QBMAN_BUG_ON(qbman_swp_acquire(p, QBMAN_TEST_BPID, &abufs[0], 2) != 2);
 }
 
 static void ceetm_test(struct qbman_swp *p __maybe_unused)
@@ -344,7 +344,7 @@ static void ceetm_test(struct qbman_swp *p __maybe_unused)
 	pr_info("*****QBMan_test: Enqueue to LFQID %x\n",
 						QBMAN_TEST_LFQID);
 	for (i = 0; i < NUM_EQ_FRAME; i++) {
-		BUG_ON(qbman_swp_enqueue(p, &eqdesc,
+		QBMAN_BUG_ON(qbman_swp_enqueue(p, &eqdesc,
 					(const struct qbman_fd *)&fd));
 		for (j = 0; j < 8; j++)
 			fd_eq[i].words[j] = *((uint32_t *)&fd + j);
@@ -364,7 +364,7 @@ static inline uint64_t read_cntvct(void)
 		ret = ret_new;
 		asm volatile ("mrs %0, cntvct_el0" : "=r" (ret_new));
 	}
-	BUG_ON(!timeout && (ret != ret_new));
+	QBMAN_BUG_ON(!timeout && (ret != ret_new));
 	return ret;
 }
 
@@ -423,7 +423,7 @@ static void do_enqueue_dequeue(struct qbman_swp *p)
 		qbman_pull_desc_set_numframes(&pulldesc, NUM_IN_PULL);
 		qbman_pull_desc_set_fq(&pulldesc, QBMAN_TEST_FQID);
 		ret = qbman_swp_pull(p, &pulldesc);
-		BUG_ON(ret);
+		QBMAN_BUG_ON(ret);
 		do {
 			ret = qbman_result_has_new_result(p, &dq_storage[j]);
 		} while (!ret);

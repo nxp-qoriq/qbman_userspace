@@ -27,7 +27,7 @@
  */
 
 #include "qbman_sys.h"
-#include <drivers/fsl_qbman_portal.h>
+#include <fsl_qbman_portal.h>
 
 uint32_t qman_version;
 #define QMAN_REV_4000   0x04000000

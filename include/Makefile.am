@@ -23,4 +23,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = drivers
+dist_DATA = fsl_qbman_base.h fsl_qbman_portal.h
+
+fsl_qbman_base.h_install = $(PREFIX)/include
+fsl_qbman_portal.h_install = $(PREFIX)/include

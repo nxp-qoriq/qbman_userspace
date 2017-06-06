@@ -28,7 +28,7 @@
 #ifndef _FSL_QBMAN_PORTAL_H
 #define _FSL_QBMAN_PORTAL_H
 
-#include <drivers/fsl_qbman_base.h>
+#include <fsl_qbman_base.h>
 
 /**
  * DOC - QBMan portal APIs to implement the following functions:

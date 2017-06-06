@@ -26,7 +26,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <compat.h>
-#include <drivers/fsl_qbman_base.h>
+#include <fsl_qbman_base.h>
 
 /* Sanity check */
 #if (__BYTE_ORDER__ != __ORDER_BIG_ENDIAN__) && \

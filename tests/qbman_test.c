@@ -24,11 +24,10 @@
  */
 #include <fcntl.h>
 #include <compat.h>
-#include <drivers/fsl_qbman_base.h>
-#include <drivers/fsl_qbman_portal.h>
+#include <fsl_qbman_base.h>
+#include <fsl_qbman_portal.h>
 #include <sys/ioctl.h>
 #include "../driver/qbman_debug.h"
-#include "../driver/qbman_private.h"
 
 #undef BUG_ON
 #define BUG_ON(x) if (x) pr_err("BUG hit. Line %d, condition %s", __LINE__, #x)
@@ -379,7 +378,7 @@ static void do_enqueue_dequeue(struct qbman_swp *p)
 	struct qbman_result *dq_storage;
 	dma_addr_t dq_storage_phys;
 	int is_last;
-	struct qbman_attr state;
+	struct qbman_fq_query_np_rslt state;
 #ifndef VDQ_TO_MEM
 	uint8_t dqrr_idx;
 	const struct qbman_fd *__fd;

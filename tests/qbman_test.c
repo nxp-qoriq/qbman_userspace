@@ -26,8 +26,8 @@
 #include <compat.h>
 #include <fsl_qbman_base.h>
 #include <fsl_qbman_portal.h>
+#include <fsl_qbman_debug.h>
 #include <sys/ioctl.h>
-#include "../driver/qbman_debug.h"
 
 #undef QBMAN_BUG_ON
 #define QBMAN_BUG_ON(x) if (x) pr_err("BUG hit. Line %d, condition %s", __LINE__, #x)

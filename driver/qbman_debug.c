@@ -23,7 +23,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qbman_debug.h"
+#include <fsl_qbman_debug.h>
+#include "qbman_portal.h"
 
 /* QBMan portal management command code */
 #define QBMAN_BP_QUERY            0x32

@@ -23,9 +23,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qbman_portal.h"
-#include <fsl_qbman_portal.h>
+#include <compat.h>
 
+struct qbman_swp;
 /* Buffer pool query commands */
 struct qbman_bp_query_rslt {
 	uint8_t verb;

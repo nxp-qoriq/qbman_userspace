@@ -28,6 +28,8 @@
 #ifndef _FSL_QBMAN_PORTAL_H
 #define _FSL_QBMAN_PORTAL_H
 
+#include <errno.h>
+#include <linux/types.h>
 #include <fsl_qbman_base.h>
 
 /**
@@ -329,7 +331,7 @@ void qbman_pull_desc_clear(struct qbman_pull_desc *d);
  */
 void qbman_pull_desc_set_storage(struct qbman_pull_desc *d,
 				 struct qbman_result *storage,
-				 dma_addr_t storage_phys,
+				 uint64_t storage_phys,
 				 int stash);
 /**
  * qbman_pull_desc_set_numframes() - Set the number of frames to be dequeued.
@@ -880,7 +882,7 @@ void qbman_eq_desc_set_orp_nesn(struct qbman_eq_desc *d, uint16_t opr_id,
  * expresses a cache-warming attribute.
  */
 void qbman_eq_desc_set_response(struct qbman_eq_desc *d,
-				dma_addr_t storage_phys,
+				uint64_t storage_phys,
 				int stash);
 
 /**

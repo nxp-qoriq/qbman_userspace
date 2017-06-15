@@ -24,10 +24,13 @@
  */
 #include <fcntl.h>
 #include <compat.h>
+#include <sys/ioctl.h>
+#include <error.h>
+#include <unistd.h>
+
 #include <fsl_qbman_base.h>
 #include <fsl_qbman_portal.h>
 #include <fsl_qbman_debug.h>
-#include <sys/ioctl.h>
 
 #undef QBMAN_BUG_ON
 #define QBMAN_BUG_ON(x) if (x) pr_err("BUG hit. Line %d, condition %s", __LINE__, #x)
@@ -317,7 +320,7 @@ static void do_pull_dequeue(struct qbman_swp *p)
 	}
 }
 
-static void release_buffer(struct qbman_swp *p __maybe_unused)
+static void release_buffer(struct qbman_swp *p)
 {
 	qbman_release_desc_clear(&releasedesc);
 	qbman_release_desc_set_bpid(&releasedesc, QBMAN_TEST_BPID);
@@ -327,14 +330,14 @@ static void release_buffer(struct qbman_swp *p __maybe_unused)
 					ARRAY_SIZE(rbufs)));
 }
 
-static void acquire_buffer(struct qbman_swp *p __maybe_unused)
+static void acquire_buffer(struct qbman_swp *p)
 {
 	pr_info("*****QBMan_test: Acquire buffer from BP %d\n",
 					QBMAN_TEST_BPID);
 	QBMAN_BUG_ON(qbman_swp_acquire(p, QBMAN_TEST_BPID, &abufs[0], 2) != 2);
 }
 
-static void ceetm_test(struct qbman_swp *p __maybe_unused)
+static void ceetm_test(struct qbman_swp *p)
 {
 	int i, j;
 
@@ -376,7 +379,7 @@ static void do_enqueue_dequeue(struct qbman_swp *p)
 	uint32_t start, end, count;
 	uint32_t eq_jam = 0;
 	struct qbman_result *dq_storage;
-	dma_addr_t dq_storage_phys;
+	uint64_t dq_storage_phys;
 	int is_last;
 	struct qbman_fq_query_np_rslt state;
 #ifndef VDQ_TO_MEM
@@ -415,7 +418,7 @@ static void do_enqueue_dequeue(struct qbman_swp *p)
 	start = read_cntvct();
 	for (i = 0; i < NUM_EQ_DQ_FRAME/NUM_IN_PULL; i++) {
 		j = (i *NUM_IN_PULL) & 0x3f;
-		dq_storage_phys = (dma_addr_t)(mem_map.phys_addr +
+		dq_storage_phys = (uint64_t)(mem_map.phys_addr +
 				 j * sizeof(struct qbman_result));
 		qbman_pull_desc_clear(&pulldesc);
 		qbman_pull_desc_set_storage(&pulldesc, &dq_storage[j],
@@ -517,7 +520,7 @@ static int qbman_test(void)
 	/* pd.eqcr_mode = qman_eqcr_vb_array; */
 
 	/* Detect whether the mc image is the test image with GPP setup */
-	reg = __raw_readl((uint8_t *)pd.cena_bar + 0x4);
+	reg = *((uint8_t *)pd.cena_bar + 0x4);
 	if (reg != 0xdeadbeef) {
 		pr_err("The MC image doesn't have GPP test setup, stop testing\n");
 		qbman_swp_munmap(&portal_map);

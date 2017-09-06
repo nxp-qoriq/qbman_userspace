@@ -69,7 +69,7 @@
 /* Pre-defined attribute codes */
 /*******************************/
 
-#define QMAN_RESPONSE_VERB_MASK   0x7f
+#define QBMAN_RESPONSE_VERB_MASK   0x7f
 
 /*************************/
 /* SDQCR attribute codes */
@@ -865,7 +865,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 	 * indicate that the vdq is no longer busy
 	 */
 	flags = p->dq.stat;
-	response_verb = verb & QMAN_RESPONSE_VERB_MASK;
+	response_verb = verb & QBMAN_RESPONSE_VERB_MASK;
 	if ((response_verb == QBMAN_RESULT_DQ) &&
 	    (flags & QBMAN_DQ_STAT_VOLATILE) &&
 	    (flags & QBMAN_DQ_STAT_EXPIRED))
@@ -957,7 +957,7 @@ int qbman_check_command_complete(struct qbman_result *dq)
 static inline int __qbman_result_is_x(const struct qbman_result *dq,
 				      uint8_t x)
 {
-	uint8_t response_verb = dq->dq.verb & QMAN_RESPONSE_VERB_MASK;
+	uint8_t response_verb = dq->dq.verb & QBMAN_RESPONSE_VERB_MASK;
 
 	return (response_verb == x);
 }

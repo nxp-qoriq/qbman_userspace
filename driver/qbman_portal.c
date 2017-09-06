@@ -26,6 +26,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
 #include "qbman_portal.h"
 
 /* QBMan portal management command codes */
@@ -104,6 +106,11 @@ enum qbman_sdqcr_fc {
  */
 #define MAX_QBMAN_PORTALS  64
 static struct qbman_swp *portal_idx_map[MAX_QBMAN_PORTALS];
+
+/* Hint for compiler */
+#ifndef unlikely
+#define unlikely(x)	__builtin_expect(!!(x), 0)
+#endif
 
 /*********************************/
 /* Portal constructor/destructor */
@@ -390,7 +397,7 @@ void qbman_eq_desc_set_orp_nesn(struct qbman_eq_desc *d, uint16_t opr_id,
 }
 
 void qbman_eq_desc_set_response(struct qbman_eq_desc *d,
-				dma_addr_t storage_phys,
+				uint64_t storage_phys,
 				int stash)
 {
 	d->eq.rsp_addr = storage_phys;
@@ -702,7 +709,7 @@ void qbman_pull_desc_clear(struct qbman_pull_desc *d)
 
 void qbman_pull_desc_set_storage(struct qbman_pull_desc *d,
 				 struct qbman_result *storage,
-				 dma_addr_t storage_phys,
+				 uint64_t storage_phys,
 				 int stash)
 {
 	d->pull.rsp_addr_virt = (uint64_t)storage;

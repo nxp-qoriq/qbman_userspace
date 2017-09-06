@@ -68,7 +68,7 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 	/* Complete the management command */
 	*r = *(struct qbman_bp_query_rslt *)qbman_swp_mc_complete(s, p,
 						 QBMAN_BP_QUERY);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: Query BPID %d failed, no response\n",
 			bpid);
 		return -EIO;
@@ -78,7 +78,7 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_BP_QUERY);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Query of BPID 0x%x failed, code=0x%02x\n", bpid,
 								r->rslt);
 		return -EIO;
@@ -229,7 +229,7 @@ int qbman_fq_query(struct qbman_swp *s, uint32_t fqid,
 	p->fqid = fqid;
 	*r = *(struct qbman_fq_query_rslt *)qbman_swp_mc_complete(s, p,
 					  QBMAN_FQ_QUERY);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: Query FQID %d failed, no response\n",
 			fqid);
 		return -EIO;
@@ -239,7 +239,7 @@ int qbman_fq_query(struct qbman_swp *s, uint32_t fqid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Query of FQID 0x%x failed, code=0x%02x\n",
 		       fqid, r->rslt);
 		return -EIO;
@@ -350,7 +350,7 @@ int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
 	p->fqid = fqid;
 	*r = *(struct qbman_fq_query_np_rslt *)qbman_swp_mc_complete(s, p,
 						QBMAN_FQ_QUERY_NP);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: Query FQID %d NP fields failed, no response\n",
 			fqid);
 		return -EIO;
@@ -360,7 +360,7 @@ int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY_NP);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Query NP fields of FQID 0x%x failed, code=0x%02x\n",
 		       fqid, r->rslt);
 		return -EIO;
@@ -424,7 +424,7 @@ int qbman_cgr_query(struct qbman_swp *s, uint32_t cgid,
 	p->cgid = cgid;
 	*r = *(struct qbman_cgr_query_rslt *)qbman_swp_mc_complete(s, p,
 							QBMAN_CGR_QUERY);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: Query CGID %d failed, no response\n",
 			cgid);
 		return -EIO;
@@ -434,7 +434,7 @@ int qbman_cgr_query(struct qbman_swp *s, uint32_t cgid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_CGR_QUERY);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Query CGID 0x%x failed,code=0x%02x\n", cgid, r->rslt);
 		return -EIO;
 	}
@@ -499,7 +499,7 @@ int qbman_cgr_wred_query(struct qbman_swp *s, uint32_t cgid,
 	p->cgid = cgid;
 	*r = *(struct qbman_wred_query_rslt *)qbman_swp_mc_complete(s, p,
 							QBMAN_WRED_QUERY);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: Query CGID WRED %d failed, no response\n",
 			cgid);
 		return -EIO;
@@ -509,7 +509,7 @@ int qbman_cgr_wred_query(struct qbman_swp *s, uint32_t cgid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WRED_QUERY);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Query CGID WRED 0x%x failed,code=0x%02x\n",
 							 cgid, r->rslt);
 		return -EIO;
@@ -524,7 +524,7 @@ int qbman_cgr_attr_wred_get_edp(struct qbman_wred_query_rslt *r, uint32_t idx)
 }
 
 uint32_t qbman_cgr_attr_wred_get_parm_dp(struct qbman_wred_query_rslt *r,
-					 uint32_t idx) 
+					 uint32_t idx)
 {
 	return r->wred_parm_dp[idx];
 }
@@ -591,7 +591,7 @@ static int qbman_cgr_statistics_query(struct qbman_swp *s, uint32_t cgid,
 			QBMAN_CGR_STAT_QUERY_CLR : QBMAN_CGR_STAT_QUERY;
 	r = (struct qbman_cgr_statistics_query_rslt *)qbman_swp_mc_complete(s,
 							p, query_verb);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: Query CGID %d statistics failed, no response\n",
 			cgid);
 		return -EIO;
@@ -601,7 +601,7 @@ static int qbman_cgr_statistics_query(struct qbman_swp *s, uint32_t cgid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != query_verb);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Query statistics of CGID 0x%x failed, code=0x%02x\n",
 						cgid, r->rslt);
 		return -EIO;
@@ -660,7 +660,7 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 	/* Complete the management command */
 	*r = *(struct qbman_wqchan_query_rslt *)qbman_swp_mc_complete(s, p,
 							QBMAN_WQ_QUERY);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: Query WQ Channel %d failed, no response\n",
 			chanid);
 		return -EIO;
@@ -670,7 +670,7 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WQ_QUERY);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Query of WQCHAN 0x%x failed, code=0x%02x\n",
 		       chanid, r->rslt);
 		return -EIO;

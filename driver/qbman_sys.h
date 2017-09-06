@@ -40,6 +40,7 @@
  * *not* to provide linux compatibility.
  */
 
+#include <stdlib.h>
 #include "qbman_sys_decl.h"
 
 /* Trace the 3 different classes of read/write access to QBMan. #undef as
@@ -48,6 +49,12 @@
 #undef QBMAN_CCSR_TRACE
 #undef QBMAN_CINH_TRACE
 #undef QBMAN_CENA_TRACE
+
+
+#define __raw_readb(p)	(*(const volatile unsigned char *)(p))
+#define __raw_readl(p)	(*(const volatile unsigned int *)(p))
+#define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
+
 
         /*********************/
         /* Debugging assists */
@@ -154,8 +161,8 @@ struct qbman_swp_sys {
 	 * place-holder.
 	 */
 	uint8_t *cena;
-	uint8_t __iomem *addr_cena;
-	uint8_t __iomem *addr_cinh;
+	uint8_t *addr_cena;
+	uint8_t *addr_cinh;
 	uint32_t idx;
 	enum qbman_eqcr_mode eqcr_mode;
 };

@@ -33,14 +33,10 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+
+
 #include <stdint.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <malloc.h>
-#include <unistd.h>
-#include <error.h>
-#include <linux/types.h>
+#include <stdio.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
@@ -48,14 +44,6 @@
  * with certain attributes and types used in those interfaces.
  */
 
-/* Required compiler attributes */
-#define __maybe_unused	__attribute__((unused))
-#define __always_unused	__attribute__((unused))
-#define likely(x)	__builtin_expect(!!(x), 1)
-#define unlikely(x)	__builtin_expect(!!(x), 0)
-
-/* Required types */
-typedef uint64_t	dma_addr_t;
 
 /* Debugging */
 #define prflush(fmt, args...) \
@@ -68,7 +56,6 @@ typedef uint64_t	dma_addr_t;
 #define pr_warning(fmt, args...) prflush("WARN:" fmt, ##args)
 #define pr_info(fmt, args...)	 prflush(fmt, ##args)
 
-#define BUG()	abort()
 #ifdef CONFIG_BUGON
 #ifdef pr_debug
 #undef pr_debug
@@ -91,23 +78,10 @@ do { \
 
 /* Other miscellaneous interfaces our APIs depend on; */
 
-#define lower_32_bits(x) ((uint32_t)(x))
-#define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
-
-
-#define __iomem
-
-#define __raw_readb(p)	(*(const volatile unsigned char *)(p))
-#define __raw_readl(p)	(*(const volatile unsigned int *)(p))
-#define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
-
-/* printk() stuff */
-#define printk(fmt, args...)	do_not_use_printk
-
-#define dmb(opt) { asm volatile("dmb " #opt : : : "memory"); }
-#define smp_mb() dmb(ish)
 
 /* Atomic stuff */
+#define smp_mb() { asm volatile("dmb ish": : : "memory"); }
+
 typedef struct {
 	int counter;
 } atomic_t;

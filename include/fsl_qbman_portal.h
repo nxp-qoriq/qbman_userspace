@@ -68,6 +68,15 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d);
 void qbman_swp_finish(struct qbman_swp *p);
 
 /**
+ * qbman_swp_invalidate() - Invalidate the cache enabled area of the QBMan
+ * portal. This is required to be called if a portal moved to another core
+ * because the QBMan portal area is non coherent
+ * @p: the qbman_swp object to be invalidated
+ *
+ */
+void qbman_swp_invalidate(struct qbman_swp *p);
+
+/**
  * qbman_swp_get_desc() - Get the descriptor of the given portal object.
  * @p: the given portal object.
  *

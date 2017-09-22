@@ -166,6 +166,9 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 		pr_err("qbman_swp_sys_init() failed %d\n", ret);
 		return NULL;
 	}
+	/* Discard anything in the cacheable area of the portal before use */
+	qbman_swp_invalidate(p);
+
 	/* SDQCR needs to be initialized to 0 when no channels are
 	 * being dequeued from or else the QMan HW will indicate an
 	 * error.  The values that were calculated above will be
@@ -191,6 +194,13 @@ void qbman_swp_finish(struct qbman_swp *p)
 	qbman_swp_sys_finish(&p->sys);
 	portal_idx_map[p->desc.idx] = NULL;
 	free(p);
+}
+
+void qbman_swp_invalidate(struct qbman_swp *p)
+{
+	int i;
+	for (i=0; i< 0x1000; i+= 64)
+		dccivac(p->sys.addr_cena + i);
 }
 
 const struct qbman_swp_desc *qbman_swp_get_desc(struct qbman_swp *p)

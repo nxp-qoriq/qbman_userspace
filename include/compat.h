@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (c) 2008-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017-2018 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,7 +35,6 @@
 #define _GNU_SOURCE
 #endif
 
-
 #include <stdint.h>
 #include <stdio.h>
 
@@ -43,7 +43,22 @@
  * are also available in kernel-space, these definitions provide compatibility
  * with certain attributes and types used in those interfaces.
  */
+#if !defined(RTE_ARCH_ARM32) && !defined(RTE_ARCH_ARM64)
+#define RTE_ARCH_ARM64
+#endif
+#if !defined(RTE_ARCH_32) && !defined(RTE_ARCH_64)
+#define RTE_ARCH_64
+#endif
 
+/* Trace the 3 different classes of read/write access to QBMan. #undef as
+ * required.
+ */
+#undef QBMAN_CCSR_TRACE
+#undef QBMAN_CINH_TRACE
+#undef QBMAN_CENA_TRACE
+
+#define __raw_readl(p)  (*(const volatile unsigned int *)(p))
+#define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
 
 /* Debugging */
 #define prflush(fmt, args...) \
@@ -56,16 +71,24 @@
 #define pr_warning(fmt, args...) prflush("WARN:" fmt, ##args)
 #define pr_info(fmt, args...)	 prflush(fmt, ##args)
 
-#ifdef CONFIG_BUGON
+#ifdef RTE_LIBRTE_DPAA2_DEBUG_BUS
+
+/* Trace the 3 different classes of read/write access to QBMan.
+ */
+#define QBMAN_CCSR_TRACE
+#define QBMAN_CINH_TRACE
+#define QBMAN_CENA_TRACE
+
 #ifdef pr_debug
 #undef pr_debug
 #endif
 #define pr_debug(fmt, args...)	printf(fmt, ##args)
 #define QBMAN_BUG_ON(c) \
 do { \
-	if (c) { \
-		pr_crit("BUG: %s:%d\n", __FILE__, __LINE__); \
-		abort(); \
+	static int warned_##__LINE__; \
+	if ((c) && !warned_##__LINE__) { \
+		pr_warn("(%s:%d)\n", __FILE__, __LINE__); \
+		warned_##__LINE__ = 1; \
 	} \
 } while(0)
 #else
@@ -78,9 +101,15 @@ do { \
 
 /* Other miscellaneous interfaces our APIs depend on; */
 
+#ifndef dmb
+#define dmb(opt) { asm volatile("dmb " #opt : : : "memory"); }
+#endif
+
+/* sequential memory pages, memory barier / fence */
+#define smp_mb() dmb(ish)
+#define dma_wmb() dmb(ish)
 
 /* Atomic stuff */
-#define smp_mb() { asm volatile("dmb ish": : : "memory"); }
 
 typedef struct {
 	int counter;
@@ -88,6 +117,7 @@ typedef struct {
 
 #define atomic_read(v)  (*(volatile int *)&(v)->counter)
 #define atomic_set(v, i) (((v)->counter) = (i))
+
 static inline void atomic_add(int i, atomic_t *v)
 {
 	unsigned long tmp;

@@ -80,7 +80,7 @@ struct qbman_swp {
 	} mc;
 	/* Management response */
 	struct {
-		u32 valid_bit; /* 0x00 or 0x80 */
+		uint32_t valid_bit; /* 0x00 or 0x80 */
 	} mr;
 	/* Push dequeues */
 	uint32_t sdq;
@@ -174,7 +174,27 @@ static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
  */
 #define qb_cl(d) (&(d)->dont_manipulate_directly[0])
 
-#define clean(p) { asm volatile("dc cvac, %0;" : : "r" (p) : "memory"); } 
+#define clean(p) { asm volatile("dc cvac, %0;" : : "r" (p) : "memory"); }
 #define invalidate(p) { asm volatile("dc ivac, %0" : : "r"(p) : "memory"); }
+
+struct qbman_fq_query_np_rslt {
+uint8_t verb;
+        uint8_t rslt;
+        uint8_t st1;
+        uint8_t st2;
+        uint8_t reserved[2];
+        uint16_t od1_sfdr;
+        uint16_t od2_sfdr;
+        uint16_t od3_sfdr;
+        uint16_t ra1_sfdr;
+        uint16_t ra2_sfdr;
+        uint32_t pfdr_hptr;
+        uint32_t pfdr_tptr;
+        uint32_t frm_cnt;
+        uint32_t byte_cnt;
+        uint16_t ics_surp;
+        uint8_t is;
+        uint8_t reserved2[29];
+};
 
 #endif

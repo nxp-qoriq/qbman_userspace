@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -25,6 +26,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#ifndef _QBMAN_PORTAL_H_
+#define _QBMAN_PORTAL_H_
 
 #include "qbman_sys.h"
 #include <fsl_qbman_portal.h>
@@ -74,6 +78,10 @@ struct qbman_swp {
 #endif
 		uint32_t valid_bit; /* 0x00 or 0x80 */
 	} mc;
+	/* Management response */
+	struct {
+		u32 valid_bit; /* 0x00 or 0x80 */
+	} mr;
 	/* Push dequeues */
 	uint32_t sdq;
 	/* Volatile dequeues */
@@ -165,3 +173,8 @@ static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
  * correctly with const and non-const inputs (and similarly-qualified outputs).
  */
 #define qb_cl(d) (&(d)->dont_manipulate_directly[0])
+
+#define clean(p) { asm volatile("dc cvac, %0;" : : "r" (p) : "memory"); } 
+#define invalidate(p) { asm volatile("dc ivac, %0" : : "r"(p) : "memory"); }
+
+#endif

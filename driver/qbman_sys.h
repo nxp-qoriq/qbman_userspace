@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -40,6 +41,9 @@
  * *not* to provide linux compatibility.
  */
 
+#ifndef _QBMAN_SYS_H_
+#define _QBMAN_SYS_H_
+
 #include <stdlib.h>
 #include "qbman_sys_decl.h"
 
@@ -54,6 +58,26 @@
 #define __raw_readb(p)	(*(const volatile unsigned char *)(p))
 #define __raw_readl(p)	(*(const volatile unsigned int *)(p))
 #define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
+
+/* CINH register offsets */
+#define QBMAN_CINH_SWP_EQCR_PI      0x800
+#define QBMAN_CINH_SWP_EQAR         0x8c0
+#define QBMAN_CINH_SWP_CR_RT        0x900
+#define QBMAN_CINH_SWP_VDQCR_RT     0x940
+#define QBMAN_CINH_SWP_EQCR_AM_RT   0x980
+#define QBMAN_CINH_SWP_RCR_AM_RT    0x9c0
+#define QBMAN_CINH_SWP_DQPI         0xa00
+#define QBMAN_CINH_SWP_DQRR_ITR     0xa80
+#define QBMAN_CINH_SWP_DCAP         0xac0
+#define QBMAN_CINH_SWP_SDQCR        0xb00
+#define QBMAN_CINH_SWP_EQCR_AM_RT2  0xb40
+#define QBMAN_CINH_SWP_RCR_PI       0xc00
+#define QBMAN_CINH_SWP_RAR          0xcc0
+#define QBMAN_CINH_SWP_ISR          0xe00
+#define QBMAN_CINH_SWP_IER          0xe40
+#define QBMAN_CINH_SWP_ISDR         0xe80
+#define QBMAN_CINH_SWP_IIR          0xec0
+#define QBMAN_CINH_SWP_ITPR         0xf40
 
 
         /*********************/
@@ -310,13 +334,16 @@ static inline void qbman_cena_prefetch(struct qbman_swp_sys *s,
  * qbman_portal.c. So use of it is declared locally here.
  */
 #define QBMAN_CINH_SWP_CFG   0xd00
-#define QBMAN_CINH_SWP_CFG   0xd00
+
 #define SWP_CFG_DQRR_MF_SHIFT 20
 #define SWP_CFG_EST_SHIFT     16
+#define SWP_CFG_CPBS_SHIFT    15
 #define SWP_CFG_WN_SHIFT      14
 #define SWP_CFG_RPM_SHIFT     12
 #define SWP_CFG_DCM_SHIFT     10
 #define SWP_CFG_EPM_SHIFT     8
+#define SWP_CFG_VPM_SHIFT     7
+#define SWP_CFG_CPM_SHIFT     6
 #define SWP_CFG_SD_SHIFT      5
 #define SWP_CFG_SP_SHIFT      4
 #define SWP_CFG_SE_SHIFT      3
@@ -347,6 +374,14 @@ static inline uint32_t qbman_set_swp_cfg(uint8_t max_fill, uint8_t wn,
 	return reg;
 }
 
+#define QMAN_RT_MODE	0x00000100
+
+#define QMAN_REV_4000   0x04000000
+#define QMAN_REV_4100   0x04010000
+#define QMAN_REV_4101   0x04010001
+#define QMAN_REV_5000   0x05000000
+#define QMAN_REV_MASK   0xffff0000
+
 static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 				     const struct qbman_swp_desc *d,
 				     uint8_t dqrr_size)
@@ -370,12 +405,22 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	QBMAN_BUG_ON(reg);
 #endif
-	if (s->eqcr_mode == qman_eqcr_vb_array)
-		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1,
-					1, 1);
-	else
-		reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 1, 1, 1, 1,
-					1, 1);
+	if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000) {
+		if (s->eqcr_mode == qman_eqcr_vb_array)
+			reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
+		else
+			reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 1, 1, 1, 1, 1, 1);
+	
+	} else {
+		if (s->eqcr_mode == qman_eqcr_vb_array)
+			reg = qbman_set_swp_cfg(dqrr_size, 1, 0, 3, 2, 3, 0, 1, 0, 1, 0, 0);
+		else
+			reg = qbman_set_swp_cfg(dqrr_size, 1, 2, 3, 2, 2, 0, 1, 0, 1, 0, 0);
+		reg |= 1 << SWP_CFG_CPBS_SHIFT | /* memory-backed mode */
+	       	       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
+	       	       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */
+	}
+
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {
@@ -383,6 +428,12 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 		free(s->cena);
 		return -1;
 	}
+
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) {
+		qbman_cinh_write(s, QBMAN_CINH_SWP_EQCR_PI, QMAN_RT_MODE);
+		qbman_cinh_write(s, QBMAN_CINH_SWP_RCR_PI, QMAN_RT_MODE);
+	}
+
 	return 0;
 }
 
@@ -390,3 +441,5 @@ static inline void qbman_swp_sys_finish(struct qbman_swp_sys *s)
 {
 	free(s->cena);
 }
+
+#endif

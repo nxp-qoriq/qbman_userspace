@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -25,6 +26,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _QBMAN_SYS_DECL_H_
+#define _QBMAN_SYS_DECL_H_
+
 #include <compat.h>
 #include <fsl_qbman_base.h>
 
@@ -49,3 +53,4 @@ static inline void prefetch_for_store(void *p)
 {
 	asm volatile("prfm pstl1keep, [%0, #0]" : : "r" (p));
 }
+#endif

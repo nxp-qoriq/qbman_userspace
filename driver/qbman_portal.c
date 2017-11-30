@@ -574,7 +574,6 @@ static int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
 		dma_wmb();
 		qbman_cena_write_complete_wo_shadow(&s->sys,
 					QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7));
-		qbman_write_eqcr_am_rt_register(&s->sys, EQAR_IDX(eqar));
 	}
 	s->eqcr.pi++;
 	s->eqcr.pi &= 0xF;

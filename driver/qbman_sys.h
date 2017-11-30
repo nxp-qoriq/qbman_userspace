@@ -390,7 +390,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	s->addr_cena = d->cena_bar;
 	s->addr_cinh = d->cinh_bar;
 	s->idx = (uint32_t)d->idx;
-	s->cena = malloc(4096);
+	s->cena = malloc(64*1024);
 	if (!s->cena) {
 		pr_err("Could not allocate page for cena shadow\n");
 		return -1;
@@ -405,17 +405,13 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	QBMAN_BUG_ON(reg);
 #endif
-	if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000) {
-		if (s->eqcr_mode == qman_eqcr_vb_array)
-			reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
-		else
-			reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 1, 1, 1, 1, 1, 1);
+	if (s->eqcr_mode == qman_eqcr_vb_array)
+		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
+	else
+		reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 1, 1, 1, 1, 1, 1);
 	
-	} else {
-		if (s->eqcr_mode == qman_eqcr_vb_array)
-			reg = qbman_set_swp_cfg(dqrr_size, 1, 0, 3, 2, 3, 0, 1, 0, 1, 0, 0);
-		else
-			reg = qbman_set_swp_cfg(dqrr_size, 1, 2, 3, 2, 2, 0, 1, 0, 1, 0, 0);
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) {
+	
 		reg |= 1 << SWP_CFG_CPBS_SHIFT | /* memory-backed mode */
 	       	       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
 	       	       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */

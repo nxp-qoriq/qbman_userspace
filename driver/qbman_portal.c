@@ -493,10 +493,10 @@ static inline void qbman_write_eqcr_am_rt_register(struct qbman_swp *p,
 						   uint8_t idx)
 {
 	if (idx < 16)
-		qbman_write_register(p, QBMAN_CINH_SWP_EQCR_AM_RT + idx * 4,
+		qbman_cinh_write(p, QBMAN_CINH_SWP_EQCR_AM_RT + idx * 4,
 				     QMAN_RT_MODE);
 	else
-		qbman_write_register(p, QBMAN_CINH_SWP_EQCR_AM_RT2 +
+		qbman_cinh_write(p, QBMAN_CINH_SWP_EQCR_AM_RT2 +
 				     (idx - 16) * 4,
 				     QMAN_RT_MODE);
 }
@@ -510,7 +510,7 @@ static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 	const uint32_t *cl = qb_cl(d);
 	uint32_t eqar = qbman_cinh_read(&s->sys, QBMAN_CINH_SWP_EQAR);
 
-	pr_debug("EQAR=%08x\n", eqar);
+	pr_debug("EQAR=%08x\n", eqar); fflush(stdout);
 	if (!EQAR_SUCCESS(eqar))
 		return -EBUSY;
 	p = qbman_cena_write_start_wo_shadow(&s->sys,
@@ -531,6 +531,7 @@ static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 		dma_wmb();
 		qbman_cena_write_complete_wo_shadow(&s->sys,
 					QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
+		qbman_write_eqcr_am_rt_register(&s->sys, EQAR_IDX(eqar));
 	}
 	return 0;
 }
@@ -573,6 +574,7 @@ static int qbman_swp_enqueue_ring_mode(struct qbman_swp *s,
 		dma_wmb();
 		qbman_cena_write_complete_wo_shadow(&s->sys,
 					QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7));
+		qbman_write_eqcr_am_rt_register(&s->sys, EQAR_IDX(eqar));
 	}
 	s->eqcr.pi++;
 	s->eqcr.pi &= 0xF;
@@ -872,10 +874,14 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 	lwsync();
 	p[0] = cl[0] | s->vdq.valid_bit;
 	s->vdq.valid_bit ^= QB_VALID_BIT;
-	if ((s->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
+	if ((s->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000) {
 		qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
-	else
+		clean(p);
+	} else {
 		qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR_MEM);
+		dma_wmb();
+		qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_VDQCR_RT, QMAN_RT_MODE);
+	}
 
 	return 0;
 }

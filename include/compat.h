@@ -2,7 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (c) 2008-2016 Freescale Semiconductor, Inc.
- * Copyright 2017 NXP
+ * Copyright 2017-2018 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,14 +37,7 @@
 
 
 #include <stdint.h>
-
-#include <stdlib.h>
-#include <stddef.h>
-#include <pthread.h>
 #include <stdio.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <assert.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
@@ -52,8 +45,6 @@
  * with certain attributes and types used in those interfaces.
  */
 
-#define likely(x)	__builtin_expect(!!(x), 1)
-#define unlikely(x)	__builtin_expect(!!(x), 0)
 
 /* Debugging */
 #define prflush(fmt, args...) \
@@ -90,11 +81,10 @@ do { \
 
 
 /* Atomic stuff */
-#define smp_mb() { asm volatile("dmb ish": : : "memory"); }
-
 #define dmb(opt) { asm volatile("dmb " #opt : : : "memory"); }
 #define smp_mb() dmb(ish)
 #define dma_wmb() dmb(ish)
+
 typedef struct {
 	int counter;
 } atomic_t;

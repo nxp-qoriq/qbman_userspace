@@ -2,7 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
- * Copyright 2017 NXP
+ * Copyright 2017-2018 NXP
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -26,6 +26,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <string.h>
 
 #include "qbman_portal.h"
 
@@ -493,10 +495,10 @@ static inline void qbman_write_eqcr_am_rt_register(struct qbman_swp *p,
 						   uint8_t idx)
 {
 	if (idx < 16)
-		qbman_cinh_write(p, QBMAN_CINH_SWP_EQCR_AM_RT + idx * 4,
+		qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_EQCR_AM_RT + idx * 4,
 				     QMAN_RT_MODE);
 	else
-		qbman_cinh_write(p, QBMAN_CINH_SWP_EQCR_AM_RT2 +
+		qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_EQCR_AM_RT2 +
 				     (idx - 16) * 4,
 				     QMAN_RT_MODE);
 }
@@ -531,7 +533,7 @@ static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 		dma_wmb();
 		qbman_cena_write_complete_wo_shadow(&s->sys,
 					QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
-		qbman_write_eqcr_am_rt_register(&s->sys, EQAR_IDX(eqar));
+		qbman_write_eqcr_am_rt_register(s, EQAR_IDX(eqar));
 	}
 	return 0;
 }
@@ -916,7 +918,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 	/* Before using valid-bit to detect if something is there, we have to
 	 * handle the case of the DQRR reset bug...
 	 */
-	if (unlikely(s->dqrr.reset_bug)) {
+	if (s->dqrr.reset_bug) {
 		/* We pick up new entries by cache-inhibited producer index,
 		 * which means that a non-coherent mapping would require us to
 		 * invalidate and read *only* once that PI has indicated that
@@ -1337,7 +1339,7 @@ int qbman_swp_acquire(struct qbman_swp *s, uint16_t bpid, uint64_t *buffers,
 
 	/* Complete the management command */
 	r = qbman_swp_mc_complete(s, p, QBMAN_MC_ACQUIRE);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: acquire from BPID %d failed, no response\n", bpid);
 		return -EIO;
 	}
@@ -1346,7 +1348,7 @@ int qbman_swp_acquire(struct qbman_swp *s, uint16_t bpid, uint64_t *buffers,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_MC_ACQUIRE);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("Acquire buffers from BPID 0x%x failed, code=0x%02x\n",
 		       bpid, r->rslt);
 		return -EIO;
@@ -1393,7 +1395,7 @@ static int qbman_swp_alt_fq_state(struct qbman_swp *s, uint32_t fqid,
 
 	/* Complete the management command */
 	r = qbman_swp_mc_complete(s, p, alt_fq_verb);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: mgmt cmd failed, no response (verb=0x%x)\n",
 		       alt_fq_verb);
 		return -EIO;
@@ -1403,7 +1405,7 @@ static int qbman_swp_alt_fq_state(struct qbman_swp *s, uint32_t fqid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != alt_fq_verb);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("ALT FQID %d failed: verb = 0x%08x, code = 0x%02x\n",
 		       fqid, alt_fq_verb, r->rslt);
 		return -EIO;
@@ -1484,7 +1486,7 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 
 	/* Complete the management command */
 	r = qbman_swp_mc_complete(s, p, QBMAN_WQCHAN_CONFIGURE);
-	if (unlikely(!r)) {
+	if (!r) {
 		pr_err("qbman: wqchan config failed, no response\n");
 		return -EIO;
 	}
@@ -1493,7 +1495,7 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WQCHAN_CONFIGURE);
 
 	/* Determine success or failure */
-	if (unlikely(r->rslt != QBMAN_MC_RSLT_OK)) {
+	if (r->rslt != QBMAN_MC_RSLT_OK) {
 		pr_err("CDAN cQID %d failed: code = 0x%02x\n",
 		       channelid, r->rslt);
 		return -EIO;

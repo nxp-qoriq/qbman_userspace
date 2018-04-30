@@ -1292,8 +1292,7 @@ int qbman_swp_release(struct qbman_swp *s, const struct qbman_release_desc *d,
 	if ((s->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
 		qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
 	else
-		qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_RCR_MEM(RAR_IDX(rar)));
-	clean(p);
+		qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_RCR_AM_RT + RAR_IDX(rar)  * 4, QMAN_RT_MODE);
 
 	return 0;
 }

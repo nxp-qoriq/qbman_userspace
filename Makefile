@@ -51,7 +51,16 @@ ifneq (distclean,$(MAKECMDGOALS))
      $(ARCH)_SPEC_CFLAGS	:=
      $(ARCH)_SPEC_LDFLAGS	:=
    else
-     $(error "ARCH not defined.")
+    ifeq (aarch64_be,$(ARCH))
+     CROSS_COMPILE		?= aarch64_be-linux-gnu-
+     $(ARCH)_SPEC_DEFINE	:=
+     $(ARCH)_SPEC_INC_PATH	:=
+     $(ARCH)_SPEC_LIB_PATH	:=
+     $(ARCH)_SPEC_CFLAGS	:=
+     $(ARCH)_SPEC_LDFLAGS	:=
+    else
+      $(error "ARCH not defined.")
+    endif
    endif
   endif
  endif

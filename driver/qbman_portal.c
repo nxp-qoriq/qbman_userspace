@@ -516,7 +516,7 @@ static int qbman_swp_enqueue_array_mode(struct qbman_swp *s,
 	const uint32_t *cl = qb_cl(d);
 	uint32_t eqar = qbman_cinh_read(&s->sys, QBMAN_CINH_SWP_EQAR);
 
-	pr_debug("EQAR=%08x\n", eqar); fflush(stdout);
+	pr_debug("EQAR=%08x\n", eqar);
 	if (!EQAR_SUCCESS(eqar))
 		return -EBUSY;
 	p = qbman_cena_write_start_wo_shadow(&s->sys,

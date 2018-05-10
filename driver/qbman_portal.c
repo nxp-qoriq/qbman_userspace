@@ -325,9 +325,10 @@ void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint8_t cmd_verb)
 		qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR, cmd);
 		clean(cmd);
 	} else {
-		*v = cmd_verb | p->mc.valid_bit;
-		dma_wmb();
-		qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR, cmd);
+	        *v = cmd_verb | p->mr.valid_bit;
+		qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR_MEM, cmd);
+                dma_wmb();
+                qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_CR_RT, QMAN_RT_MODE);
 	}
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_poll;
@@ -344,22 +345,25 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 		qbman_cena_invalidate_prefetch(&p->sys,
 				       	QBMAN_CENA_SWP_RR(p->mc.valid_bit));
 		ret = qbman_cena_read(&p->sys, QBMAN_CENA_SWP_RR(p->mc.valid_bit));
+		/* Remove the valid-bit - command completed iff the rest is non-zero */
+		verb = ret[0] & ~QB_VALID_BIT;
+		if (!verb)
+			return NULL;
+		p->mc.valid_bit ^= QB_VALID_BIT;
 	} else {
-		qbman_cena_invalidate_prefetch(&p->sys,
-				       	QBMAN_CENA_SWP_RR_MEM);
 		ret = qbman_cena_read(&p->sys, QBMAN_CENA_SWP_RR_MEM);
 		/* Command completed if the valid bit is toggled */
 		if (p->mr.valid_bit != (ret[0] & QB_VALID_BIT))
 			return NULL;
+		/* Remove the valid-bit - command completed iff the rest is non-zero */
+		verb = ret[0] & ~QB_VALID_BIT;
+		if (!verb)
+			return NULL;
+                p->mr.valid_bit ^= QB_VALID_BIT;
 	}
-	/* Remove the valid-bit - command completed iff the rest is non-zero */
-	verb = ret[0] & ~QB_VALID_BIT;
-	if (!verb)
-		return NULL;
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_start;
 #endif
-	p->mc.valid_bit ^= QB_VALID_BIT;
 	return ret;
 }
 
@@ -1287,12 +1291,16 @@ int qbman_swp_release(struct qbman_swp *s, const struct qbman_release_desc *d,
 	/* Set the verb byte, have to substitute in the valid-bit and the number
 	 * of buffers.
 	 */
-	lwsync();
-	p[0] = cl[0] | RAR_VB(rar) | num_buffers;
-	if ((s->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
+
+	if ((s->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000) {
+		lwsync();
+		p[0] = cl[0] | RAR_VB(rar) | num_buffers;
 		qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_RCR(RAR_IDX(rar)));
-	else
-		qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_RCR_AM_RT + RAR_IDX(rar)  * 4, QMAN_RT_MODE);
+	} else {
+		p[0] = cl[0] | RAR_VB(rar) | num_buffers;
+		lwsync();
+		qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_RCR_AM_RT + RAR_IDX(rar) * 4, QMAN_RT_MODE);
+	}
 
 	return 0;
 }

@@ -46,15 +46,13 @@ uint32_t qman_version;
 
 /* QBMan DQRR size is set at runtime in qbman_portal.c */
 
-#define QBMAN_EQCR_SIZE 8
-
 static inline uint8_t qm_cyc_diff(uint8_t ringsize, uint8_t first,
 				  uint8_t last)
 {
-	/* 'first' is included, 'last' is excluded */
-	if (first <= last)
+	if (first < last)
 		return last - first;
-	return (2 * ringsize) + last - first;
+	else
+		return ringsize - (first - last);
 }
 
 /* --------------------- */
@@ -118,6 +116,8 @@ struct qbman_swp {
 	struct {
 		uint32_t pi;
 		uint32_t pi_vb;
+		uint32_t pi_ring_size;
+		uint32_t pi_mask;
 		uint32_t ci;
 		int available;
 	} eqcr;

@@ -41,6 +41,9 @@ uint32_t qman_version;
 /* All QBMan command and result structures use this "valid bit" encoding */
 #define QB_VALID_BIT ((uint32_t)0x80)
 
+/* All QBMan command use this "Read trigger bit" encoding */
+#define QB_RT_BIT ((uint32_t)0x100)
+
 /* Management command result codes */
 #define QBMAN_MC_RSLT_OK      0xf0
 
@@ -49,10 +52,11 @@ uint32_t qman_version;
 static inline uint8_t qm_cyc_diff(uint8_t ringsize, uint8_t first,
 				  uint8_t last)
 {
-	if (first < last)
+	/* 'first' is included, 'last' is excluded */
+	if (first <= last)
 		return last - first;
 	else
-		return ringsize - (first - last);
+		return (2 * ringsize) - (first - last);
 }
 
 /* --------------------- */

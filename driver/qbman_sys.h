@@ -45,6 +45,7 @@
 #define _QBMAN_SYS_H_
 
 #include <stdlib.h>
+#include <string.h>
 #include "qbman_sys_decl.h"
 
 /* Trace the 3 different classes of read/write access to QBMan. #undef as
@@ -405,17 +406,20 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	QBMAN_BUG_ON(reg);
 #endif
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
+		memset(s->addr_cena, 0, 64*1024);
+
 	if (s->eqcr_mode == qman_eqcr_vb_array)
 		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
 	else {
-		if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000) 
+		if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
 			reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 2, 1, 1, 1, 1, 1, 1);
 		else
 			reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 0, 1, 1, 1, 1, 1, 1);
 	}
-	
+
 	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) {
-	
+
 		reg |= 1 << SWP_CFG_CPBS_SHIFT | /* memory-backed mode */
 	       	       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
 	       	       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */

@@ -432,12 +432,19 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *p);
 void qbman_swp_dqrr_consume(struct qbman_swp *s, const struct qbman_result *dq);
 
 /**
+ * qbman_swp_dqrr_idx_consume() -  Given the DQRR index consume the DQRR entry
+ * @s: the software portal object.
+ * @dqrr_index: the DQRR index entry to be consumed.
+ */
+void qbman_swp_dqrr_idx_consume(struct qbman_swp *s, uint8_t dqrr_index);
+
+/**
  * qbman_get_dqrr_idx() - Get dqrr index from the given dqrr
  * @dqrr: the given dqrr object.
  *
  * Return dqrr index.
  */
-uint8_t qbman_get_dqrr_idx(struct qbman_result *dqrr);
+uint8_t qbman_get_dqrr_idx(const struct qbman_result *dqrr);
 
 /**
  * qbman_get_dqrr_from_idx() - Use index to get the dqrr entry from the
@@ -601,6 +608,9 @@ int qbman_result_is_FQPN(const struct qbman_result *dq);
 #define QBMAN_DQ_STAT_VOLATILE      0x02
 /* volatile dequeue command is expired */
 #define QBMAN_DQ_STAT_EXPIRED       0x01
+
+#define QBMAN_EQCR_DCA_IDXMASK		0x0f
+#define QBMAN_ENQUEUE_FLAG_DCA		(1ULL << 31)
 
 /**
  * qbman_result_DQ_flags() - Get the STAT field of dequeue response
@@ -992,6 +1002,7 @@ int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
 int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 			       const struct qbman_eq_desc *d,
 			       const struct qbman_fd *fd,
+			       uint32_t *flags,
 			       int num_frames);
 /**
  * qbman_swp_enqueue_multiple_desc() - Enqueue multiple frames with

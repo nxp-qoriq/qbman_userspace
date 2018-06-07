@@ -609,14 +609,12 @@ static int qbman_swp_enqueue_array_mode_direct(struct qbman_swp *s,
 					QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
 	memcpy(&p[1], &cl[1], 28);
 	memcpy(&p[8], fd, sizeof(*fd));
-	lwsync();
 
 	/* Set the verb byte, have to substitute in the valid-bit */
 	dma_wmb();
 	p[0] = cl[0] | EQAR_VB(eqar);
 	qbman_cena_write_complete_wo_shadow(&s->sys,
 				QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
-	clean(p);
 	return 0;
 }
 static int qbman_swp_enqueue_array_mode_mem_back(struct qbman_swp *s,
@@ -634,15 +632,11 @@ static int qbman_swp_enqueue_array_mode_mem_back(struct qbman_swp *s,
 					QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
 	memcpy(&p[1], &cl[1], 28);
 	memcpy(&p[8], fd, sizeof(*fd));
-	lwsync();
 
 	/* Set the verb byte, have to substitute in the valid-bit */
 	p[0] = cl[0] | EQAR_VB(eqar);
 	dma_wmb();
-	qbman_cena_write_complete_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
 	qbman_write_eqcr_am_rt_register(s, EQAR_IDX(eqar));
-	clean(p);
 	return 0;
 }
 
@@ -688,7 +682,6 @@ static int qbman_swp_enqueue_ring_mode_direct(struct qbman_swp *s,
         s->eqcr.available--;
         if (!(s->eqcr.pi & half_mask))
                 s->eqcr.pi_vb ^= QB_VALID_BIT;
-	clean(p);
 
         return 0;
 }
@@ -705,9 +698,9 @@ static int qbman_swp_enqueue_ring_mode_mem_back(struct qbman_swp *s,
 	full_mask = s->eqcr.pi_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
-		s->eqcr.ci = qbman_cinh_read(&s->sys, 
+		s->eqcr.ci = qbman_cinh_read(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
-		s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size, 
+		s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 				eqcr_ci, s->eqcr.ci);
 		if (!s->eqcr.available)
 			return -EBUSY;
@@ -717,22 +710,17 @@ static int qbman_swp_enqueue_ring_mode_mem_back(struct qbman_swp *s,
 			QBMAN_CENA_SWP_EQCR(s->eqcr.pi & half_mask));
 	memcpy(&p[1], &cl[1], 28);
 	memcpy(&p[8], fd, sizeof(*fd));
-	lwsync();
 
 	/* Set the verb byte, have to substitute in the valid-bit */
 	p[0] = cl[0] | s->eqcr.pi_vb;
-	qbman_cena_write_complete_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_EQCR(s->eqcr.pi & half_mask));
 	s->eqcr.pi++;
         s->eqcr.pi &= full_mask;
 	s->eqcr.available--;
 	if(!(s->eqcr.pi & half_mask))
 		s->eqcr.pi_vb ^= QB_VALID_BIT;
 	dma_wmb();
-	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI, 
+	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI,
 				(QB_RT_BIT)|(s->eqcr.pi)|s->eqcr.pi_vb);
-	clean(p);
-
 	return 0;
 }
 
@@ -768,9 +756,9 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 	full_mask = s->eqcr.pi_mask;
         if (!s->eqcr.available) {
                 eqcr_ci = s->eqcr.ci;
-		s->eqcr.ci = qbman_cena_read_reg(&s->sys, 
+		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
-                s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size, 
+                s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 					eqcr_ci, s->eqcr.ci);
                 if (!s->eqcr.available)
                         return 0;
@@ -817,7 +805,6 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
                 eqcr_pi++;
         }
         s->eqcr.pi = eqcr_pi & full_mask;
-	clean(p);
 
         return num_enqueued;
 }
@@ -837,9 +824,9 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 	full_mask = s->eqcr.pi_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
-		s->eqcr.ci = qbman_cinh_read(&s->sys, 
+		s->eqcr.ci = qbman_cinh_read(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
-		s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size, 
+		s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 					eqcr_ci, s->eqcr.ci);
 		if (!s->eqcr.available)
 			return 0;
@@ -857,8 +844,6 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 		memcpy(&p[8], &fd[i], sizeof(*fd));
 		eqcr_pi++;
 	}
-
-	lwsync();
 
 	/* Set the verb byte, have to substitute in the valid-bit */
 	eqcr_pi = s->eqcr.pi;
@@ -879,10 +864,8 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 	s->eqcr.pi = eqcr_pi & full_mask;
 
 	dma_wmb();
-	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI, 
+	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI,
 				(QB_RT_BIT)|(s->eqcr.pi)|s->eqcr.pi_vb);
-	clean(p);
-
 	return num_enqueued;
 }
 
@@ -910,9 +893,9 @@ static int qbman_swp_enqueue_multiple_desc_direct(struct qbman_swp *s,
 	full_mask = s->eqcr.pi_mask;
         if (!s->eqcr.available) {
                 eqcr_ci = s->eqcr.ci;
-                s->eqcr.ci = qbman_cena_read_reg(&s->sys, 
+                s->eqcr.ci = qbman_cena_read_reg(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
-                s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size, 
+                s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 					eqcr_ci, s->eqcr.ci);
                 if (!s->eqcr.available)
                         return 0;
@@ -973,9 +956,9 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
         full_mask = s->eqcr.pi_mask;
         if (!s->eqcr.available) {
                 eqcr_ci = s->eqcr.ci;
-                s->eqcr.ci = qbman_cinh_read(&s->sys, 
+                s->eqcr.ci = qbman_cinh_read(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
-                s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size, 
+                s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 					eqcr_ci, s->eqcr.ci);
                 if (!s->eqcr.available)
                         return 0;
@@ -995,8 +978,6 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
                 eqcr_pi++;
         }
 
-        lwsync();
-
         /* Set the verb byte, have to substitute in the valid-bit */
         eqcr_pi = s->eqcr.pi;
         for (i = 0; i < num_enqueued; i++) {
@@ -1012,7 +993,7 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
         s->eqcr.pi = eqcr_pi & full_mask;
 
 	dma_wmb();
-	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI, 
+	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI,
 				(QB_RT_BIT)|(s->eqcr.pi)|s->eqcr.pi_vb);
 
 	return num_enqueued;
@@ -1175,7 +1156,6 @@ static int qbman_swp_pull_direct(struct qbman_swp *s, struct qbman_pull_desc *d)
 	p[0] = cl[0] | s->vdq.valid_bit;
 	s->vdq.valid_bit ^= QB_VALID_BIT;
 	qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
-	clean(p);
 
 	return 0;
 }
@@ -1196,10 +1176,8 @@ static int qbman_swp_pull_mem_back(struct qbman_swp *s, struct qbman_pull_desc *
 	memcpy(&p[1], &cl[1], 12);
 
 	/* Set the verb byte, have to substitute in the valid-bit */
-	lwsync();
 	p[0] = cl[0] | s->vdq.valid_bit;
 	s->vdq.valid_bit ^= QB_VALID_BIT;
-	qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR_MEM);
 	dma_wmb();
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_VDQCR_RT, QMAN_RT_MODE);
 

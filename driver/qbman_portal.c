@@ -1313,7 +1313,6 @@ const struct qbman_result *qbman_swp_dqrr_next_mem_back(struct qbman_swp *s)
 	 * knew from reading PI.
 	 */
 	if ((verb & QB_VALID_BIT) != s->dqrr.valid_bit) {
-		qbman_cena_invalidate_prefetch(&s->sys, QBMAN_CENA_SWP_DQRR_MEM(s->dqrr.next_idx));
 		return NULL;
 	}
 
@@ -1334,8 +1333,6 @@ const struct qbman_result *qbman_swp_dqrr_next_mem_back(struct qbman_swp *s)
 	    (flags & QBMAN_DQ_STAT_VOLATILE) &&
 	    (flags & QBMAN_DQ_STAT_EXPIRED))
 			atomic_inc(&s->vdq.busy);
-
-	qbman_cena_invalidate_prefetch(&s->sys, QBMAN_CENA_SWP_DQRR_MEM(s->dqrr.next_idx));
 	return p;
 }
 

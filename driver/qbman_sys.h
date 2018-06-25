@@ -388,6 +388,8 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 				     uint8_t dqrr_size)
 {
 	uint32_t reg;
+	int i;
+
 	s->addr_cena = d->cena_bar;
 	s->addr_cinh = d->cinh_bar;
 	s->idx = (uint32_t)d->idx;
@@ -408,6 +410,11 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 #endif
 	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
 		memset(s->addr_cena, 0, 64*1024);
+	else {
+		/* Invalidate the portal memory. This ensures no stale cache lines */
+		for (i=0; i < 0x1000; i+= 64)
+			dccivac(s->addr_cena + i);
+	}
 
 	if (s->eqcr_mode == qman_eqcr_vb_array)
 		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1, 1, 1);

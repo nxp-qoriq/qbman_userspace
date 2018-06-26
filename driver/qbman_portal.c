@@ -255,6 +255,15 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 		pr_err("qbman_swp_sys_init() failed %d\n", ret);
 		return NULL;
 	}
+
+	/* Verify that the DQRRPI is 0 - if it is not the portal isn't
+	 * in default state which is an error */
+	if (qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_DQPI) & 0xF) {
+		pr_err("qbman DQRR PI is not zero, portal is not clean\n");
+		free(p);
+		return NULL;
+	}
+
 	/* SDQCR needs to be initialized to 0 when no channels are
 	 * being dequeued from or else the QMan HW will indicate an
 	 * error.  The values that were calculated above will be

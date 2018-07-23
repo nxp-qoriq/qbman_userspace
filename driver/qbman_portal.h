@@ -49,14 +49,15 @@ uint32_t qman_version;
 
 /* QBMan DQRR size is set at runtime in qbman_portal.c */
 
+#define QBMAN_EQCR_SIZE 8
+
 static inline uint8_t qm_cyc_diff(uint8_t ringsize, uint8_t first,
 				  uint8_t last)
 {
 	/* 'first' is included, 'last' is excluded */
 	if (first <= last)
 		return last - first;
-	else
-		return (2 * ringsize) - (first - last);
+	return (2 * ringsize) + last - first;
 }
 
 /* --------------------- */

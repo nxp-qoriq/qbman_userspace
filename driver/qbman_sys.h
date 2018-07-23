@@ -420,7 +420,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
 	else {
 		if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
-			reg = qbman_set_swp_cfg(dqrr_size, 1, 2, 3, 2, 2, 1, 1, 1, 1, 1, 1);
+			reg = qbman_set_swp_cfg(dqrr_size, 0, 1, 3, 2, 2, 1, 1, 1, 1, 1, 1);
 		else
 			reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 0, 1, 1, 1, 1, 1, 1);
 	}

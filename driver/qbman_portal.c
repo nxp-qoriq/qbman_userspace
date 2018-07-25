@@ -765,26 +765,27 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 			       uint32_t *flags,
 			       int num_frames)
 {
-	uint32_t *p;
+	uint32_t *p=NULL;
 	const uint32_t *cl = qb_cl(d);
-	uint32_t eqcr_ci, eqcr_pi;
-	uint8_t diff;
+	uint32_t eqcr_ci, eqcr_pi, half_mask, full_mask;
 	int i, num_enqueued = 0;
 	uint64_t addr_cena;
+
+        half_mask = (s->eqcr.pi_mask>>1);
+        full_mask = s->eqcr.pi_mask;
 
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 #ifdef DPAA2_LX2_EQCR_WORKAROUND
 		s->eqcr.ci = qbman_cinh_read(&s->sys,
-				QBMAN_CINH_SWP_EQCR_CI) & 0xF;
+				QBMAN_CINH_SWP_EQCR_CI) & full_mask;
 #else
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
-				QBMAN_CENA_SWP_EQCR_CI) & 0xF;
+				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
 #endif
-		diff = qm_cyc_diff(QBMAN_EQCR_SIZE,
+		s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 				   eqcr_ci, s->eqcr.ci);
-		s->eqcr.available += diff;
-		if (!diff)
+		if (!s->eqcr.available)
 			return 0;
 	}
 
@@ -795,11 +796,10 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 	/* Fill in the EQCR ring */
 	for (i = 0; i < num_enqueued; i++) {
 		p = qbman_cena_write_start_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
+				QBMAN_CENA_SWP_EQCR(eqcr_pi & half_mask));
 		memcpy(&p[1], &cl[1], 28);
 		memcpy(&p[8], &fd[i], sizeof(*fd));
 		eqcr_pi++;
-		eqcr_pi &= 0xF;
 	}
 
 	lwsync();
@@ -808,7 +808,7 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 	eqcr_pi = s->eqcr.pi;
 	for (i = 0; i < num_enqueued; i++) {
 		p = qbman_cena_write_start_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7));
+				QBMAN_CENA_SWP_EQCR(eqcr_pi & half_mask));
 		p[0] = cl[0] | s->eqcr.pi_vb;
 		if (flags && (flags[i] & QBMAN_ENQUEUE_FLAG_DCA)) {
 			struct qbman_eq_desc *d = (struct qbman_eq_desc *)p;
@@ -817,8 +817,7 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 				((flags[i]) & QBMAN_EQCR_DCA_IDXMASK);
 		}
 		eqcr_pi++;
-		eqcr_pi &= 0xF;
-		if (!(eqcr_pi & 7))
+		if (!(eqcr_pi & half_mask))
 			s->eqcr.pi_vb ^= QB_VALID_BIT;
 	}
 
@@ -826,11 +825,10 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 	eqcr_pi = s->eqcr.pi;
 	addr_cena = (size_t)s->sys.addr_cena;
 	for (i = 0; i < num_enqueued; i++) {
-		dcbf((addr_cena + QBMAN_CENA_SWP_EQCR(eqcr_pi & 7)));
+		dcbf((addr_cena + QBMAN_CENA_SWP_EQCR(eqcr_pi & half_mask)));
 		eqcr_pi++;
-		eqcr_pi &= 0xF;
 	}
-	s->eqcr.pi = eqcr_pi;
+	s->eqcr.pi = eqcr_pi & full_mask;
 
 	return num_enqueued;
 }
@@ -1227,6 +1225,22 @@ inline int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 #define QBMAN_RESULT_BPSCN     0x29
 #define QBMAN_RESULT_CSCN_WQ   0x2a
 
+#ifndef rte_prefetch0
+static inline void rte_prefetch0(const volatile void *p)
+{
+        asm volatile ("PRFM PLDL1KEEP, [%0]" : : "r" (p));
+}
+#endif
+
+void qbman_swp_prefetch_dqrr_next(struct qbman_swp *s)
+{
+	const struct qbman_result *p;
+
+	p = qbman_cena_read_wo_shadow(&s->sys,
+		QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
+	rte_prefetch0(p);
+}
+
 /* NULL return if there are no unconsumed DQRR entries. Returns a DQRR entry
  * only once, so repeated calls can return a sequence of DQRR entries, without
  * requiring they be consumed immediately or in any particular order.
@@ -1289,9 +1303,6 @@ const struct qbman_result *qbman_swp_dqrr_next_direct(struct qbman_swp *s)
 	 * knew from reading PI.
 	 */
 	if ((verb & QB_VALID_BIT) != s->dqrr.valid_bit) {
-		//This was not in the DPDK code and it probably an error
-		//qbman_cena_invalidate_prefetch(&s->sys,
-		//	QBMAN_CENA_SWP_DQRR(s->dqrr.next_idx));
 		return NULL;
 	}
 

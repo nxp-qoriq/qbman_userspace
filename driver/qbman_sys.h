@@ -48,20 +48,12 @@
 #include <string.h>
 #include "qbman_sys_decl.h"
 
-/* Trace the 3 different classes of read/write access to QBMan. #undef as
- * required.
- */
-#undef QBMAN_CCSR_TRACE
-#undef QBMAN_CINH_TRACE
-#undef QBMAN_CENA_TRACE
-
-
-#define __raw_readb(p)	(*(const volatile unsigned char *)(p))
-#define __raw_readl(p)	(*(const volatile unsigned int *)(p))
-#define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
+#define CENA_WRITE_ENABLE 0
+#define CINH_WRITE_ENABLE 1
 
 /* CINH register offsets */
 #define QBMAN_CINH_SWP_EQCR_PI      0x800
+#define QBMAN_CINH_SWP_EQCR_CI      0x840
 #define QBMAN_CINH_SWP_EQAR         0x8c0
 #define QBMAN_CINH_SWP_CR_RT        0x900
 #define QBMAN_CINH_SWP_VDQCR_RT     0x940
@@ -80,6 +72,21 @@
 #define QBMAN_CINH_SWP_IIR          0xec0
 #define QBMAN_CINH_SWP_ITPR         0xf40
 
+/* CENA register offsets */
+#define QBMAN_CENA_SWP_EQCR(n) (0x000 + ((uint32_t)(n) << 6))
+#define QBMAN_CENA_SWP_DQRR(n) (0x200 + ((uint32_t)(n) << 6))
+#define QBMAN_CENA_SWP_RCR(n)  (0x400 + ((uint32_t)(n) << 6))
+#define QBMAN_CENA_SWP_CR      0x600
+#define QBMAN_CENA_SWP_RR(vb)  (0x700 + ((uint32_t)(vb) >> 1))
+#define QBMAN_CENA_SWP_VDQCR   0x780
+#define QBMAN_CENA_SWP_EQCR_CI 0x840
+
+/* CENA register offsets in memory-backed mode */
+#define QBMAN_CENA_SWP_DQRR_MEM(n)  (0x800 + ((uint32_t)(n) << 6))
+#define QBMAN_CENA_SWP_RCR_MEM(n)   (0x1400 + ((uint32_t)(n) << 6))
+#define QBMAN_CENA_SWP_CR_MEM       0x1600
+#define QBMAN_CENA_SWP_RR_MEM       0x1680
+#define QBMAN_CENA_SWP_VDQCR_MEM    0x1780
 
         /*********************/
         /* Debugging assists */
@@ -242,7 +249,11 @@ static inline void *qbman_cena_write_start_wo_shadow(struct qbman_swp_sys *s,
 		s->addr_cena, s->idx, offset);
 #endif
 	QBMAN_BUG_ON(offset & 63);
+#ifdef RTE_ARCH_64
 	return (s->addr_cena + offset);
+#else
+	return (s->addr_cinh + offset);
+#endif
 }
 
 static inline void qbman_cena_write_complete(struct qbman_swp_sys *s,
@@ -255,11 +266,19 @@ static inline void qbman_cena_write_complete(struct qbman_swp_sys *s,
 		s->addr_cena, s->idx, offset, shadow);
 	hexdump(cmd, 64);
 #endif
+#ifdef RTE_ARCH_64
 	for (loop = 15; loop >= 1; loop--)
 		__raw_writel(shadow[loop], s->addr_cena +
 					 offset + loop * 4);
 	lwsync();
 		__raw_writel(shadow[0], s->addr_cena + offset);
+#else
+	for (loop = 15; loop >= 1; loop--)
+		__raw_writel(shadow[loop], s->addr_cinh +
+					 offset + loop * 4);
+	lwsync();
+	__raw_writel(shadow[0], s->addr_cinh + offset);
+#endif
 	dcbf(s->addr_cena + offset);
 }
 
@@ -288,9 +307,15 @@ static inline void *qbman_cena_read(struct qbman_swp_sys *s, uint32_t offset)
 		s->addr_cena, s->idx, offset, shadow);
 #endif
 
+#ifdef RTE_ARCH_64
 	for (loop = 0; loop < 16; loop++)
 		shadow[loop] = __raw_readl(s->addr_cena + offset
 					+ loop * 4);
+#else
+	for (loop = 0; loop < 16; loop++)
+		shadow[loop] = __raw_readl(s->addr_cinh + offset
+					+ loop * 4);
+#endif
 #ifdef QBMAN_CENA_TRACE
 	hexdump(shadow, 64);
 #endif
@@ -389,6 +414,11 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 {
 	uint32_t reg;
 	int i;
+#ifdef RTE_ARCH_64
+	uint8_t wn = CENA_WRITE_ENABLE;
+#else
+	uint8_t wn = CINH_WRITE_ENABLE;
+#endif
 
 	s->addr_cena = d->cena_bar;
 	s->addr_cinh = d->cinh_bar;
@@ -417,20 +447,21 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	}
 
 	if (s->eqcr_mode == qman_eqcr_vb_array)
-		reg = qbman_set_swp_cfg(dqrr_size, 0, 0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
-	else {
+		reg = qbman_set_swp_cfg(dqrr_size, wn,
+					0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
+	else 
 		if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
-			reg = qbman_set_swp_cfg(dqrr_size, 0, 1, 3, 2, 2, 1, 1, 1, 1, 1, 1);
+			reg = qbman_set_swp_cfg(dqrr_size, wn,
+						1, 3, 2, 2, 1, 1, 1, 1, 1, 1);
 		else
-			reg = qbman_set_swp_cfg(dqrr_size, 0, 2, 3, 2, 0, 1, 1, 1, 1, 1, 1);
-	}
+			reg = qbman_set_swp_cfg(dqrr_size, wn,
+						2, 3, 2, 0, 1, 1, 1, 1, 1, 1);
 
-	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) {
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) 
 
 		reg |= 1 << SWP_CFG_CPBS_SHIFT | /* memory-backed mode */
-	       	       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
-	       	       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */
-	}
+		       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
+		       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */
 
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
@@ -453,4 +484,4 @@ static inline void qbman_swp_sys_finish(struct qbman_swp_sys *s)
 	free(s->cena);
 }
 
-#endif
+#endif /* _QBMAN_SYS_H_ */

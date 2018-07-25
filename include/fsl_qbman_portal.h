@@ -424,6 +424,12 @@ int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d);
 const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *p);
 
 /**
+ * qbman_swp_prefetch_dqrr_next() - prefetch the next DQRR entry.
+ * @s: the software portal object.
+ */
+void qbman_swp_prefetch_dqrr_next(struct qbman_swp *s);
+
+/**
  * qbman_swp_dqrr_consume() -  Consume DQRR entries previously returned from
  * qbman_swp_dqrr_next().
  * @s: the software portal object.
@@ -995,6 +1001,7 @@ int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
  * @s: the software portal used for enqueue.
  * @d: the enqueue descriptor.
  * @fd: the frame descriptor to be enqueued.
+ * @flags: bit-mask of QBMAN_ENQUEUE_FLAG_*** options
  * @num_frames: the number of the frames to be enqueued.
  *
  * Return the number of enqueued frames, -EBUSY if the EQCR is not ready.

@@ -42,25 +42,25 @@
 #define QBMAN_WQCHAN_CONFIGURE 0x46
 
 /* CINH register offsets */
-#define QBMAN_CINH_SWP_EQCR_PI      0x800
-#define QBMAN_CINH_SWP_EQCR_CI      0x840
-#define QBMAN_CINH_SWP_EQAR	 0x8c0
-#define QBMAN_CINH_SWP_CR_RT	0x900
-#define QBMAN_CINH_SWP_VDQCR_RT     0x940
-#define QBMAN_CINH_SWP_EQCR_AM_RT   0x980
-#define QBMAN_CINH_SWP_RCR_AM_RT    0x9c0
-#define QBMAN_CINH_SWP_DQPI	 0xa00
-#define QBMAN_CINH_SWP_DQRR_ITR     0xa80
-#define QBMAN_CINH_SWP_DCAP	 0xac0
-#define QBMAN_CINH_SWP_SDQCR	0xb00
-#define QBMAN_CINH_SWP_EQCR_AM_RT2  0xb40
-#define QBMAN_CINH_SWP_RCR_PI       0xc00
-#define QBMAN_CINH_SWP_RAR	  0xcc0
-#define QBMAN_CINH_SWP_ISR	  0xe00
-#define QBMAN_CINH_SWP_IER	  0xe40
-#define QBMAN_CINH_SWP_ISDR	 0xe80
-#define QBMAN_CINH_SWP_IIR	  0xec0
-#define QBMAN_CINH_SWP_ITPR	 0xf40
+#define QBMAN_CINH_SWP_EQCR_PI		0x800
+#define QBMAN_CINH_SWP_EQCR_CI		0x840
+#define QBMAN_CINH_SWP_EQAR		0x8c0
+#define QBMAN_CINH_SWP_CR_RT		0x900
+#define QBMAN_CINH_SWP_VDQCR_RT		0x940
+#define QBMAN_CINH_SWP_EQCR_AM_RT	0x980
+#define QBMAN_CINH_SWP_RCR_AM_RT	0x9c0
+#define QBMAN_CINH_SWP_DQPI		0xa00
+#define QBMAN_CINH_SWP_DQRR_ITR		0xa80
+#define QBMAN_CINH_SWP_DCAP		0xac0
+#define QBMAN_CINH_SWP_SDQCR		0xb00
+#define QBMAN_CINH_SWP_EQCR_AM_RT2	0xb40
+#define QBMAN_CINH_SWP_RCR_PI		0xc00
+#define QBMAN_CINH_SWP_RAR		0xcc0
+#define QBMAN_CINH_SWP_ISR		0xe00
+#define QBMAN_CINH_SWP_IER		0xe40
+#define QBMAN_CINH_SWP_ISDR		0xe80
+#define QBMAN_CINH_SWP_IIR		0xec0
+#define QBMAN_CINH_SWP_ITPR		0xf40
 
 /* CENA register offsets */
 #define QBMAN_CENA_SWP_EQCR(n) (0x000 + ((uint32_t)(n) << 6))
@@ -502,14 +502,14 @@ enum qb_enqueue_commands {
 	enqueue_rejects_to_fq = 2
 };
 
-#define QB_ENQUEUE_CMD_EC_OPTION_MASK	0x3
-#define QB_ENQUEUE_CMD_ORP_ENABLE_SHIFT      2
-#define QB_ENQUEUE_CMD_IRQ_ON_DISPATCH_SHIFT 3
-#define QB_ENQUEUE_CMD_TARGET_TYPE_SHIFT     4
-#define QB_ENQUEUE_CMD_DCA_PK_SHIFT	  6
-#define QB_ENQUEUE_CMD_DCA_EN_SHIFT	  7
-#define QB_ENQUEUE_CMD_NLIS_SHIFT	    14
-#define QB_ENQUEUE_CMD_IS_NESN_SHIFT	 15
+#define QB_ENQUEUE_CMD_EC_OPTION_MASK		0x3
+#define QB_ENQUEUE_CMD_ORP_ENABLE_SHIFT		2
+#define QB_ENQUEUE_CMD_IRQ_ON_DISPATCH_SHIFT	3
+#define QB_ENQUEUE_CMD_TARGET_TYPE_SHIFT	4
+#define QB_ENQUEUE_CMD_DCA_PK_SHIFT		6
+#define QB_ENQUEUE_CMD_DCA_EN_SHIFT		7
+#define QB_ENQUEUE_CMD_NLIS_SHIFT		14
+#define QB_ENQUEUE_CMD_IS_NESN_SHIFT		15
 
 void qbman_eq_desc_clear(struct qbman_eq_desc *d)
 {
@@ -1232,18 +1232,18 @@ inline int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 /* Polling DQRR */
 /****************/
 
-#define QMAN_DQRR_PI_MASK	      0xf
+#define QMAN_DQRR_PI_MASK	0xf
 
-#define QBMAN_RESULT_DQ	0x60
-#define QBMAN_RESULT_FQRN      0x21
-#define QBMAN_RESULT_FQRNI     0x22
-#define QBMAN_RESULT_FQPN      0x24
-#define QBMAN_RESULT_FQDAN     0x25
-#define QBMAN_RESULT_CDAN      0x26
-#define QBMAN_RESULT_CSCN_MEM  0x27
-#define QBMAN_RESULT_CGCU      0x28
-#define QBMAN_RESULT_BPSCN     0x29
-#define QBMAN_RESULT_CSCN_WQ   0x2a
+#define QBMAN_RESULT_DQ		0x60
+#define QBMAN_RESULT_FQRN	0x21
+#define QBMAN_RESULT_FQRNI	0x22
+#define QBMAN_RESULT_FQPN	0x24
+#define QBMAN_RESULT_FQDAN	0x25
+#define QBMAN_RESULT_CDAN	0x26
+#define QBMAN_RESULT_CSCN_MEM	0x27
+#define QBMAN_RESULT_CGCU	0x28
+#define QBMAN_RESULT_BPSCN	0x29
+#define QBMAN_RESULT_CSCN_WQ	0x2a
 
 #ifndef rte_prefetch0
 static inline void rte_prefetch0(const volatile void *p)

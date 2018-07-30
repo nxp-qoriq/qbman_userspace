@@ -43,10 +43,10 @@
  * are also available in kernel-space, these definitions provide compatibility
  * with certain attributes and types used in those interfaces.
  */
-#if ! defined (RTE_ARCH_ARM32) && ! defined (RTE_ARCH_ARM64)
+#if !defined(RTE_ARCH_ARM32) && !defined(RTE_ARCH_ARM64)
 #define RTE_ARCH_ARM64
 #endif
-#if ! defined (RTE_ARCH_32) && ! defined (RTE_ARCH_64)
+#if !defined(RTE_ARCH_32) && !defined(RTE_ARCH_64)
 #define RTE_ARCH_64
 #endif
 
@@ -57,7 +57,6 @@
 #undef QBMAN_CINH_TRACE
 #undef QBMAN_CENA_TRACE
 
-#define __raw_readb(p)  (*(const volatile unsigned char *)(p))
 #define __raw_readl(p)  (*(const volatile unsigned int *)(p))
 #define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
 
@@ -102,18 +101,11 @@ do { \
 
 /* Other miscellaneous interfaces our APIs depend on; */
 
-#define lower_32_bits(x) ((uint32_t)(x))
-#define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
-
 #ifndef dmb
 #define dmb(opt) { asm volatile("dmb " #opt : : : "memory"); }
 #endif
 #define smp_mb() dmb(ish)
 #define dma_wmb() dmb(ish)
-
-#define __raw_readb(p)  (*(const volatile unsigned char *)(p))
-#define __raw_readl(p)  (*(const volatile unsigned int *)(p))
-#define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
 
 /* Atomic stuff */
 

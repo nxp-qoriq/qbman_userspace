@@ -441,15 +441,17 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
 		memset(s->addr_cena, 0, 64*1024);
 	else {
-		/* Invalidate the portal memory. This ensures no stale cache lines */
-		for (i=0; i < 0x1000; i+= 64)
+		/* Invalidate the portal memory.
+		 * This ensures no stale cache lines
+		 */
+		for (i = 0; i < 0x1000; i += 64)
 			dccivac(s->addr_cena + i);
 	}
 
 	if (s->eqcr_mode == qman_eqcr_vb_array)
 		reg = qbman_set_swp_cfg(dqrr_size, wn,
 					0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
-	else 
+	else
 		if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
 			reg = qbman_set_swp_cfg(dqrr_size, wn,
 						1, 3, 2, 2, 1, 1, 1, 1, 1, 1);
@@ -457,8 +459,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 			reg = qbman_set_swp_cfg(dqrr_size, wn,
 						2, 3, 2, 0, 1, 1, 1, 1, 1, 1);
 
-	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) 
-
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
 		reg |= 1 << SWP_CFG_CPBS_SHIFT | /* memory-backed mode */
 		       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
 		       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */

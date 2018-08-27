@@ -472,19 +472,26 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 		/* Command completed if the valid bit is toggled */
 		if (p->mr.valid_bit != (ret[0] & QB_VALID_BIT))
 			return NULL;
+		/* Remove the valid-bit -
+		 * command completed iff the rest is non-zero
+		 */
+		verb = ret[0] & ~QB_VALID_BIT;
+		if (!verb)
+			return NULL;
+		p->mr.valid_bit ^= QB_VALID_BIT;
 	} else {
 		qbman_cena_invalidate_prefetch(&p->sys,
 					QBMAN_CENA_SWP_RR(p->mc.valid_bit));
 		ret = qbman_cena_read(&p->sys,
 				QBMAN_CENA_SWP_RR(p->mc.valid_bit));
+		/* Remove the valid-bit -
+		 * command completed iff the rest is non-zero
+		 */
+		verb = ret[0] & ~QB_VALID_BIT;
+		if (!verb)
+			return NULL;
+		p->mc.valid_bit ^= QB_VALID_BIT;
 	}
-	/* Remove the valid-bit -
-	 * command completed iff the rest is non-zero
-	 */
-	verb = ret[0] & ~QB_VALID_BIT;
-	if (!verb)
-		return NULL;
-	p->mr.valid_bit ^= QB_VALID_BIT;
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_start;
 #endif

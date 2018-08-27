@@ -1,2 +1,0 @@
-export ARCH=aarch64
-export PATH=$HOME/LS/gcc-linaro-aarch64-linux-gnu-4.8-2014.04_linux/bin:$PATH

@@ -238,24 +238,26 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 
 	if (!p)
 		return NULL;
+
+	memset(p, 0, sizeof(struct qbman_swp));
+
 	p->desc = *d;
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_start;
 #endif
 	p->mc.valid_bit = QB_VALID_BIT;
-	p->sdq = 0;
 	p->sdq |= qbman_sdqcr_dct_prio_ics << QB_SDQCR_DCT_SHIFT;
 	p->sdq |= qbman_sdqcr_fc_up_to_3 << QB_SDQCR_FC_SHIFT;
 	p->sdq |= QMAN_SDQCR_TOKEN << QB_SDQCR_TOK_SHIFT;
-	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access))
 		p->mr.valid_bit = QB_VALID_BIT;
 
 	atomic_set(&p->vdq.busy, 1);
 	p->vdq.valid_bit = QB_VALID_BIT;
-	p->dqrr.next_idx = 0;
 	p->dqrr.valid_bit = QB_VALID_BIT;
 	qman_version = p->desc.qman_version;
-	if ((qman_version & 0xFFFF0000) < QMAN_REV_4100) {
+	if ((qman_version & QMAN_REV_MASK) < QMAN_REV_4100) {
 		p->dqrr.dqrr_size = 4;
 		p->dqrr.reset_bug = 1;
 	} else {
@@ -287,7 +289,8 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_SDQCR, 0);
 
 	p->eqcr.pi_ring_size = 8;
-	if ((qman_version & 0xFFFF0000) >= QMAN_REV_5000) {
+	if ((qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access)) {
 		p->eqcr.pi_ring_size = 32;
 		qbman_swp_enqueue_array_mode_ptr =
 			qbman_swp_enqueue_array_mode_mem_back;
@@ -303,20 +306,21 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	}
 
 	for (mask_size = p->eqcr.pi_ring_size; mask_size > 0; mask_size >>= 1)
-		p->eqcr.pi_mask = (p->eqcr.pi_mask << 1) + 1;
+		p->eqcr.pi_ci_mask = (p->eqcr.pi_ci_mask << 1) + 1;
 	eqcr_pi = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_PI);
-	p->eqcr.pi = eqcr_pi & p->eqcr.pi_mask;
+	p->eqcr.pi = eqcr_pi & p->eqcr.pi_ci_mask;
 	p->eqcr.pi_vb = eqcr_pi & QB_VALID_BIT;
-	if ((p->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
-		p->eqcr.ci = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_CI)
-				& p->eqcr.pi_mask;
-	else
+	if ((p->desc.qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access))
 		p->eqcr.ci = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_PI)
-				& p->eqcr.pi_mask;
+				& p->eqcr.pi_ci_mask;
+	else
+		p->eqcr.ci = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_CI)
+				& p->eqcr.pi_ci_mask;
 	p->eqcr.available = p->eqcr.pi_ring_size
 			- qm_cyc_diff(p->eqcr.pi_ring_size,
-			p->eqcr.ci & (p->eqcr.pi_mask << 1),
-			p->eqcr.pi & (p->eqcr.pi_mask << 1));
+			p->eqcr.ci & (p->eqcr.pi_ci_mask << 1),
+			p->eqcr.pi & (p->eqcr.pi_ci_mask << 1));
 
 	portal_idx_map[p->desc.idx] = p;
 	return p;
@@ -415,10 +419,11 @@ void *qbman_swp_mc_start(struct qbman_swp *p)
 #ifdef QBMAN_CHECKING
 	QBMAN_BUG_ON(p->mc.check != swp_mc_can_start);
 #endif
-	if ((p->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
-		ret = qbman_cena_write_start(&p->sys, QBMAN_CENA_SWP_CR);
-	else
+	if ((p->desc.qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+		    && (p->desc.cena_access_mode == qman_cena_fastest_access))
 		ret = qbman_cena_write_start(&p->sys, QBMAN_CENA_SWP_CR_MEM);
+	else
+		ret = qbman_cena_write_start(&p->sys, QBMAN_CENA_SWP_CR);
 #ifdef QBMAN_CHECKING
 	if (!ret)
 		p->mc.check = swp_mc_can_submit;
@@ -438,16 +443,17 @@ void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint8_t cmd_verb)
 	 * caller wants to OR but has forgotten to do so.
 	 */
 	QBMAN_BUG_ON((*v & cmd_verb) != *v);
-	if ((p->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000) {
-		dma_wmb();
-		*v = cmd_verb | p->mc.valid_bit;
-		qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR, cmd);
-		clean(cmd);
-	} else {
+	if ((p->desc.qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+		    && (p->desc.cena_access_mode == qman_cena_fastest_access)) {
 		*v = cmd_verb | p->mr.valid_bit;
 		qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR_MEM, cmd);
 		dma_wmb();
 		qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_CR_RT, QMAN_RT_MODE);
+	} else {
+		dma_wmb();
+		*v = cmd_verb | p->mc.valid_bit;
+		qbman_cena_write_complete(&p->sys, QBMAN_CENA_SWP_CR, cmd);
+		clean(cmd);
 	}
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_poll;
@@ -460,19 +466,8 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 #ifdef QBMAN_CHECKING
 	QBMAN_BUG_ON(p->mc.check != swp_mc_can_poll);
 #endif
-	if ((p->desc.qman_version & QMAN_REV_MASK) < QMAN_REV_5000) {
-		qbman_cena_invalidate_prefetch(&p->sys,
-					QBMAN_CENA_SWP_RR(p->mc.valid_bit));
-		ret = qbman_cena_read(&p->sys,
-				QBMAN_CENA_SWP_RR(p->mc.valid_bit));
-		/* Remove the valid-bit -
-		 * command completed iff the rest is non-zero
-		 */
-		verb = ret[0] & ~QB_VALID_BIT;
-		if (!verb)
-			return NULL;
-		p->mc.valid_bit ^= QB_VALID_BIT;
-	} else {
+	if ((p->desc.qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+		    && (p->desc.cena_access_mode == qman_cena_fastest_access)) {
 		ret = qbman_cena_read(&p->sys, QBMAN_CENA_SWP_RR_MEM);
 		/* Command completed if the valid bit is toggled */
 		if (p->mr.valid_bit != (ret[0] & QB_VALID_BIT))
@@ -484,6 +479,18 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 		if (!verb)
 			return NULL;
 		p->mr.valid_bit ^= QB_VALID_BIT;
+	} else {
+		qbman_cena_invalidate_prefetch(&p->sys,
+					QBMAN_CENA_SWP_RR(p->mc.valid_bit));
+		ret = qbman_cena_read(&p->sys,
+				QBMAN_CENA_SWP_RR(p->mc.valid_bit));
+		/* Remove the valid-bit -
+		 * command completed iff the rest is non-zero
+		 */
+		verb = ret[0] & ~QB_VALID_BIT;
+		if (!verb)
+			return NULL;
+		p->mc.valid_bit ^= QB_VALID_BIT;
 	}
 #ifdef QBMAN_CHECKING
 	p->mc.check = swp_mc_can_start;
@@ -693,8 +700,8 @@ static int qbman_swp_enqueue_ring_mode_direct(struct qbman_swp *s,
 	const uint32_t *cl = qb_cl(d);
 	uint32_t eqcr_ci, full_mask, half_mask;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
@@ -732,8 +739,8 @@ static int qbman_swp_enqueue_ring_mode_mem_back(struct qbman_swp *s,
 	const uint32_t *cl = qb_cl(d);
 	uint32_t eqcr_ci, full_mask, half_mask;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cinh_read(&s->sys,
@@ -790,8 +797,8 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 	int i, num_enqueued = 0;
 	uint64_t addr_cena;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
@@ -863,8 +870,8 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 	uint32_t eqcr_ci, eqcr_pi, half_mask, full_mask;
 	int i, num_enqueued = 0;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cinh_read(&s->sys,
@@ -932,8 +939,8 @@ static int qbman_swp_enqueue_multiple_desc_direct(struct qbman_swp *s,
 	int i, num_enqueued = 0;
 	uint64_t addr_cena;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
@@ -995,8 +1002,8 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
 	uint32_t eqcr_ci, eqcr_pi, half_mask, full_mask;
 	int i, num_enqueued = 0;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cinh_read(&s->sys,

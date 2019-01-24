@@ -2,7 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (c) 2008-2016 Freescale Semiconductor, Inc.
- * Copyright 2017-2018 NXP
+ * Copyright 2017-2019 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <assert.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
@@ -70,6 +71,24 @@
 #define pr_err(fmt, args...)	 prflush("ERR:" fmt, ##args)
 #define pr_warning(fmt, args...) prflush("WARN:" fmt, ##args)
 #define pr_info(fmt, args...)	 prflush(fmt, ##args)
+
+// This is based on a 2.5GHz processor, the core is generaly slower.
+#define APPROXIMATE_TIMER_FREQ 25000000
+
+static inline uint64_t read_free_running_frequency_counter(void)
+{
+	uint64_t ret;
+	uint64_t ret_new, timeout = 200;
+
+	asm volatile ("mrs %0, cntvct_el0" : "=r" (ret));
+	asm volatile ("mrs %0, cntvct_el0" : "=r" (ret_new));
+	while (ret != ret_new && timeout--) {
+		ret = ret_new;
+		asm volatile ("mrs %0, cntvct_el0" : "=r" (ret_new));
+	}
+	assert(!(!timeout && (ret != ret_new)));
+	return ret;
+}
 
 #ifdef RTE_LIBRTE_DPAA2_DEBUG_BUS
 

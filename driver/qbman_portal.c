@@ -2,7 +2,7 @@
  *   BSD LICENSE
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
- * Copyright 2017-2018 NXP
+ * Copyright 2017-2019 NXP
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -30,6 +30,37 @@
 #include <string.h>
 
 #include "qbman_portal.h"
+
+// Uncomment this line to get statistic while the system is running.
+//#define DEBUG_STATS
+
+#ifdef DEBUG_STATS
+#undef __USE_EXTERN_INLINES
+#include <pthread.h>
+
+#define HALF_PRINT_DELAY 5
+
+struct DEQUEUE_STATS {
+	pthread_t id;
+	uint64_t print_time;
+	uint64_t number_of_poll_success;
+	uint64_t number_of_frames;
+	int odd;
+};
+static __thread struct DEQUEUE_STATS dequeue_stats;
+static __thread int first_dequeue_run = 1;
+
+struct ENQUEUE_STATS {
+	pthread_t id;
+	uint64_t print_time;
+	uint64_t number_of_enqueue;
+	uint64_t number_of_frames;
+	int odd;
+};
+static __thread struct ENQUEUE_STATS enqueue_stats;
+static __thread int first_enqueue_run = 1;
+
+#endif
 
 #define QMAN_REV_4000   0x04000000
 #define QMAN_REV_4100   0x04010000
@@ -639,6 +670,47 @@ static inline void qbman_write_eqcr_am_rt_register(struct qbman_swp *p,
 				     QMAN_RT_MODE);
 }
 
+#ifdef DEBUG_STATS
+static inline void printDebugStats(int num_enqueued)
+{
+	uint64_t current_enqueue_time;
+	float average = 0;
+
+	if (first_enqueue_run) {
+		enqueue_stats.id = pthread_self();
+		enqueue_stats.print_time =
+			read_free_running_frequency_counter();
+		enqueue_stats.print_time += (HALF_PRINT_DELAY
+			* APPROXIMATE_TIMER_FREQ);
+		first_enqueue_run = 0;
+	}
+	enqueue_stats.number_of_enqueue++;
+	enqueue_stats.number_of_frames += num_enqueued;
+
+	current_enqueue_time = read_free_running_frequency_counter();
+	if (current_enqueue_time > enqueue_stats.print_time) {
+		if (enqueue_stats.odd) {
+			// We are printing every 2 cycles to remove the
+			// cost of the calculation from the average.
+			average = ((double)0.0
+				+ enqueue_stats.number_of_frames)
+				/enqueue_stats.number_of_enqueue;
+			printf("ID: %lu, Enqueue %is average %.2f\n",
+				enqueue_stats.id,
+				2 * HALF_PRINT_DELAY,
+				average);
+			enqueue_stats.odd = 0;
+		} else {
+			// Reset to initial values
+			enqueue_stats.number_of_enqueue = 0;
+			enqueue_stats.number_of_frames = 0;
+			enqueue_stats.odd = 1;
+		}
+		enqueue_stats.print_time = current_enqueue_time
+			+ (HALF_PRINT_DELAY * APPROXIMATE_TIMER_FREQ);
+	}
+}
+#endif
 
 static int qbman_swp_enqueue_array_mode_direct(struct qbman_swp *s,
 					const struct qbman_eq_desc *d,
@@ -661,6 +733,10 @@ static int qbman_swp_enqueue_array_mode_direct(struct qbman_swp *s,
 	p[0] = cl[0] | EQAR_VB(eqar);
 	qbman_cena_write_complete_wo_shadow(&s->sys,
 				QBMAN_CENA_SWP_EQCR(EQAR_IDX(eqar)));
+
+#ifdef DEBUG_STATS
+	printDebugStats(1);
+#endif
 	return 0;
 }
 static int qbman_swp_enqueue_array_mode_mem_back(struct qbman_swp *s,
@@ -683,6 +759,10 @@ static int qbman_swp_enqueue_array_mode_mem_back(struct qbman_swp *s,
 	p[0] = cl[0] | EQAR_VB(eqar);
 	dma_wmb();
 	qbman_write_eqcr_am_rt_register(s, EQAR_IDX(eqar));
+
+#ifdef DEBUG_STATS
+	printDebugStats(1);
+#endif
 	return 0;
 }
 
@@ -729,6 +809,9 @@ static int qbman_swp_enqueue_ring_mode_direct(struct qbman_swp *s,
 	if (!(s->eqcr.pi & half_mask))
 		s->eqcr.pi_vb ^= QB_VALID_BIT;
 
+#ifdef DEBUG_STATS
+	printDebugStats(1);
+#endif
 	return 0;
 }
 
@@ -767,6 +850,10 @@ static int qbman_swp_enqueue_ring_mode_mem_back(struct qbman_swp *s,
 	dma_wmb();
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI,
 				(QB_RT_BIT)|(s->eqcr.pi)|s->eqcr.pi_vb);
+
+#ifdef DEBUG_STATS
+	printDebugStats(1);
+#endif
 	return 0;
 }
 
@@ -803,13 +890,8 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
-#ifdef DPAA2_LX2_EQCR_WORKAROUND
-		s->eqcr.ci = qbman_cinh_read(&s->sys,
-				QBMAN_CINH_SWP_EQCR_CI) & full_mask;
-#else
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
 				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
-#endif
 		s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 				   eqcr_ci, s->eqcr.ci);
 		if (!s->eqcr.available)
@@ -857,6 +939,9 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 	}
 	s->eqcr.pi = eqcr_pi & full_mask;
 
+#ifdef DEBUG_STATS
+	printDebugStats(num_enqueued);
+#endif
 	return num_enqueued;
 }
 
@@ -917,6 +1002,10 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 	dma_wmb();
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI,
 				(QB_RT_BIT)|(s->eqcr.pi)|s->eqcr.pi_vb);
+
+#ifdef DEBUG_STATS
+	printDebugStats(num_enqueued);
+#endif
 	return num_enqueued;
 }
 
@@ -990,6 +1079,9 @@ static int qbman_swp_enqueue_multiple_desc_direct(struct qbman_swp *s,
 	}
 	s->eqcr.pi = eqcr_pi & full_mask;
 
+#ifdef DEBUG_STATS
+	printDebugStats(num_enqueued);
+#endif
 	return num_enqueued;
 }
 
@@ -1007,8 +1099,8 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
 	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
-		s->eqcr.ci = qbman_cinh_read(&s->sys,
-				QBMAN_CENA_SWP_EQCR_CI) & full_mask;
+		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
+				QBMAN_CENA_SWP_EQCR_CI_MEMBACK) & full_mask;
 		s->eqcr.available = qm_cyc_diff(s->eqcr.pi_ring_size,
 					eqcr_ci, s->eqcr.ci);
 		if (!s->eqcr.available)
@@ -1047,6 +1139,9 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_EQCR_PI,
 				(QB_RT_BIT)|(s->eqcr.pi)|s->eqcr.pi_vb);
 
+#ifdef DEBUG_STATS
+	printDebugStats(num_enqueued);
+#endif
 	return num_enqueued;
 }
 inline int qbman_swp_enqueue_multiple_desc(struct qbman_swp *s,
@@ -1187,6 +1282,17 @@ static int qbman_swp_pull_direct(struct qbman_swp *s, struct qbman_pull_desc *d)
 	uint32_t *p;
 	uint32_t *cl = qb_cl(d);
 
+#ifdef DEBUG_STATS
+	if (first_dequeue_run) {
+		dequeue_stats.id = pthread_self();
+		dequeue_stats.print_time =
+			read_free_running_frequency_counter();
+		dequeue_stats.print_time += (HALF_PRINT_DELAY
+			* APPROXIMATE_TIMER_FREQ);
+		dequeue_stats.odd = 0;
+		first_dequeue_run = 0;
+	}
+#endif
 	if (!atomic_dec_and_test(&s->vdq.busy)) {
 		atomic_inc(&s->vdq.busy);
 		return -EBUSY;
@@ -1203,6 +1309,9 @@ static int qbman_swp_pull_direct(struct qbman_swp *s, struct qbman_pull_desc *d)
 	s->vdq.valid_bit ^= QB_VALID_BIT;
 	qbman_cena_write_complete_wo_shadow(&s->sys, QBMAN_CENA_SWP_VDQCR);
 
+#ifdef DEBUG_STATS
+	dequeue_stats.number_of_poll_success++;
+#endif
 	return 0;
 }
 
@@ -1212,6 +1321,17 @@ static int qbman_swp_pull_mem_back(struct qbman_swp *s,
 	uint32_t *p;
 	uint32_t *cl = qb_cl(d);
 
+#ifdef DEBUG_STATS
+	if (first_dequeue_run) {
+		dequeue_stats.id = pthread_self();
+		dequeue_stats.print_time =
+			read_free_running_frequency_counter();
+		dequeue_stats.print_time += (HALF_PRINT_DELAY
+			* APPROXIMATE_TIMER_FREQ);
+		dequeue_stats.odd = 0;
+		first_dequeue_run = 0;
+	}
+#endif
 	if (!atomic_dec_and_test(&s->vdq.busy)) {
 		atomic_inc(&s->vdq.busy);
 		return -EBUSY;
@@ -1228,6 +1348,9 @@ static int qbman_swp_pull_mem_back(struct qbman_swp *s,
 	dma_wmb();
 	qbman_cinh_write(&s->sys, QBMAN_CINH_SWP_VDQCR_RT, QMAN_RT_MODE);
 
+#ifdef DEBUG_STATS
+	dequeue_stats.number_of_poll_success++;
+#endif
 	return 0;
 }
 
@@ -1440,6 +1563,34 @@ int qbman_result_has_new_result(struct qbman_swp *s,
 		atomic_inc(&s->vdq.busy);
 	}
 
+#ifdef DEBUG_STATS
+	dequeue_stats.number_of_frames++;
+	uint64_t current_dequeue_time;
+
+	current_dequeue_time = read_free_running_frequency_counter();
+	if (current_dequeue_time > dequeue_stats.print_time) {
+		if (dequeue_stats.odd) {
+			float frame_per_poll;
+
+			frame_per_poll = ((double)0.0
+				+ dequeue_stats.number_of_frames)
+				/dequeue_stats.number_of_poll_success;
+			printf("ID: %lu, Dequeue %is average %.2f\n",
+				dequeue_stats.id,
+				2*HALF_PRINT_DELAY,
+				frame_per_poll);
+
+			dequeue_stats.odd = 0;
+		} else {
+			dequeue_stats.number_of_poll_success = 0;
+			dequeue_stats.number_of_frames = 0;
+			dequeue_stats.odd = 1;
+		}
+		dequeue_stats.print_time = current_dequeue_time
+			+ (HALF_PRINT_DELAY * APPROXIMATE_TIMER_FREQ);
+
+	}
+#endif
 	return 1;
 }
 

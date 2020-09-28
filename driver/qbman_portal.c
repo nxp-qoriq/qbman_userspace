@@ -31,6 +31,7 @@
 
 #include "qbman_portal.h"
 
+uint32_t qman_version;
 // Uncomment this line to get statistic while the system is running.
 //#define DEBUG_STATS
 
